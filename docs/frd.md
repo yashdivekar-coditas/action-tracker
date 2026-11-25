@@ -122,7 +122,7 @@ Any other phrase → no Due Date, but the Due Phrase is stored and reported as u
 ### FR-9 Duplicates
 - Two occurrences are the same Action Item when they have the same resolved Owner set and the same task once both are lowercased, stripped of punctuation, stripped of `a`/`an`/`the`, and stripped of the Due Phrase. For Ambiguous or Unknown Owners the written name is used; Unassigned items compare on task alone.
 - A Duplicate adds a Source to the existing item, so it is one item with many Sources.
-- The Due Phrase and Due Date come from the Source with the latest Meeting Date.
+- The Due Phrase and Due Date come from the latest Source that has a Due Phrase; a later mention without one leaves them unchanged. The task text comes from the latest Source. When two Sources share a Meeting Date, the later file name wins. The result does not depend on ingest order.
 
 ### FR-10 Status from notes
 - An item is Done when any Source shows it checked (`[x]`/`[X]`), or when `actiontrack done` marked it.
@@ -136,7 +136,7 @@ Any other phrase → no Due Date, but the Due Phrase is stored and reported as u
 
 ### FR-12 Ingest report and exit codes
 After every run, print:
-- counts: notes read, notes skipped as Malformed, files ignored, items new, items merged as Duplicates, items newly Done;
+- counts: notes read, notes skipped as Malformed, files ignored, items new, items merged (repeats attached as Duplicates, FR-9, and items merged by a correction, FR-11), items newly Done;
 - each Malformed Note with its reason (FR-3);
 - each Ambiguous Owner (written name, candidates, note), Unknown Owner, and Unassigned item;
 - each unresolved Due Phrase.

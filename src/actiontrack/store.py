@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from actiontrack.items import Occurrence
+from actiontrack.items import Occurrence, dedupe_key
 from actiontrack.notes import Note
 from actiontrack.owners import Resolution
 
@@ -73,6 +73,26 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
         )
         """,
     ),
+    (
+        # Nullable: rows from before spec 06 get their key on the next ingest.
+        "ALTER TABLE items ADD COLUMN dedupe_key TEXT",
+        "CREATE UNIQUE INDEX items_live_key ON items (dedupe_key) WHERE merged_into IS NULL",
+    ),
+    (
+        # Each Source keeps what its line said, so an item's fields are derived from its Sources (FR-9).
+        # Before this version every item had one Source, so the item's own values are that Source's.
+        "ALTER TABLE sources ADD COLUMN task TEXT",
+        "ALTER TABLE sources ADD COLUMN written_owner TEXT",
+        "ALTER TABLE sources ADD COLUMN due_phrase TEXT",
+        "ALTER TABLE sources ADD COLUMN due_date TEXT",
+        """
+        UPDATE sources SET
+          task          = (SELECT task FROM items WHERE items.id = sources.item_id),
+          written_owner = (SELECT written_owner FROM items WHERE items.id = sources.item_id),
+          due_phrase    = (SELECT due_phrase FROM items WHERE items.id = sources.item_id),
+          due_date      = (SELECT due_date FROM items WHERE items.id = sources.item_id)
+        """,
+    ),
 )
 
 # NFR-4: meeting content stays private on a shared machine.
@@ -89,6 +109,8 @@ class RecordResult:
 
     item_id: int
     new_item: bool
+    duplicate: bool  # a repeat attached to an existing item as another Source (FR-9)
+    merged: bool  # a correction made two items one; `item_id` is the survivor (FR-11)
     newly_done: bool
 
 
@@ -150,10 +172,15 @@ class Store:
         *,
         owner: Resolution,
     ) -> RecordResult:
-        """Store one occurrence as a Source, creating its item unless this line was seen before (FR-11).
+        """Store one occurrence as a Source of an item (FR-9, FR-11).
 
-        The Due Phrase and its resolved Due Date are rewritten on every ingest, so a rule fix
-        applies on the next run (FR-8).
+        A line seen before updates its item in place; otherwise an item with the same dedupe key
+        gains the Source as a Duplicate; otherwise a new item is created. If re-resolving a known
+        line gives its item the key of another live item, the two merge into the lower id (FR-11).
+
+        The Source keeps its own task, written owner, Due Phrase and Due Date, rewritten on every
+        ingest so a rule fix applies on the next run (FR-8). The item's fields are then re-derived
+        from all its Sources, so they do not depend on ingest order (FR-9).
 
         A checked occurrence marks its item Done as of the Meeting Date; Done is never cleared (FR-10).
         """
@@ -162,38 +189,59 @@ class Store:
             "SELECT item_id FROM sources WHERE note_path = ? AND line_key = ?",
             (path, occurrence.line_key),
         ).fetchone()
-        item_fields = (
-            occurrence.task,
-            occurrence.owner_part,
-            occurrence.due_phrase,
-            due_date.isoformat() if due_date else None,
-        )
-        if row is None:
+        key = dedupe_key(owner.kind.value, owner.persons, occurrence.owner_part, occurrence.task)
+        duplicate = merged = False
+        if row is not None:
+            item_id = row[0]
+            if (other := self._live_with_key(key, excluding=item_id)) is not None:
+                item_id, merged = min(item_id, other), True
+                self._merge_items(loser=max(row[0], other), survivor=item_id)
+            self._conn.execute("UPDATE items SET dedupe_key = ? WHERE id = ?", (key, item_id))
+        elif (live := self._live_with_key(key)) is not None:
+            item_id, duplicate = live, True
+        else:
             item_id = self._conn.execute(
-                "INSERT INTO items (task, written_owner, due_phrase, due_date) VALUES (?, ?, ?, ?)",
-                item_fields,
+                "INSERT INTO items (task, dedupe_key) VALUES (?, ?)", (occurrence.task, key)
             ).lastrowid
             assert item_id is not None
-        else:
-            item_id = row[0]
-            self._conn.execute(
-                "UPDATE items SET task = ?, written_owner = ?, due_phrase = ?, due_date = ? WHERE id = ?",
-                (*item_fields, item_id),
-            )
         self._conn.execute(
             """
-            INSERT INTO sources (note_path, line_key, item_id, line_no, raw_line, checked)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO sources (note_path, line_key, item_id, line_no, raw_line, checked,
+                                 task, written_owner, due_phrase, due_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (note_path, line_key) DO UPDATE SET
-              line_no  = excluded.line_no,
-              raw_line = excluded.raw_line,
-              checked  = excluded.checked
+              line_no       = excluded.line_no,
+              raw_line      = excluded.raw_line,
+              checked       = excluded.checked,
+              task          = excluded.task,
+              written_owner = excluded.written_owner,
+              due_phrase    = excluded.due_phrase,
+              due_date      = excluded.due_date
             """,
-            (path, occurrence.line_key, item_id, occurrence.line_no, occurrence.raw_line, occurrence.checked),
-        )
+            (
+                path, occurrence.line_key, item_id, occurrence.line_no, occurrence.raw_line, occurrence.checked,
+                occurrence.task, occurrence.owner_part, occurrence.due_phrase,
+                due_date.isoformat() if due_date else None,
+            ),
+        )  # fmt: skip
+        self._derive_item_fields(item_id)
         self._set_owner(item_id, owner)
         newly_done = occurrence.checked and self._mark_done(item_id, meeting_date, by="note")
-        return RecordResult(item_id=item_id, new_item=row is None, newly_done=newly_done)
+        return RecordResult(
+            item_id=item_id, new_item=row is None and not duplicate, duplicate=duplicate, merged=merged,
+            newly_done=newly_done,
+        )  # fmt: skip
+
+    def _live_with_key(self, key: str, *, excluding: int = 0) -> int | None:
+        """The id of the live (not merged) item with this dedupe key, other than `excluding`."""
+        row = self._conn.execute(
+            "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL AND id != ?", (key, excluding)
+        ).fetchone()
+        return row[0] if row else None
+
+    def live_id(self, item_id: int) -> int:
+        """`item_id`, or the item it was merged into (FR-11); merges repoint chains, so one hop is enough."""
+        return self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()[0]
 
     def list_items(self) -> list[StoredItem]:
         """Every live (not merged) item in id order, each with its Sources."""
@@ -219,6 +267,49 @@ class Store:
                 """
             )
         ]  # fmt: skip
+
+    def _derive_item_fields(self, item_id: int) -> None:
+        """Set the item's task, written owner, Due Phrase and Due Date from its Sources (FR-9).
+
+        Task and written owner come from the latest Source; the Due Phrase and Due Date from the
+        latest Source that has a Due Phrase, else none. Latest means the greatest Meeting Date,
+        then file path, then line number.
+        """
+        sources = self._conn.execute(
+            """
+            SELECT s.task, s.written_owner, s.due_phrase, s.due_date
+            FROM sources s JOIN notes n ON n.path = s.note_path
+            WHERE s.item_id = ?
+            ORDER BY n.meeting_date DESC, s.note_path DESC, s.line_no DESC
+            """,
+            (item_id,),
+        ).fetchall()
+        task, written_owner, _, _ = sources[0]
+        due_phrase, due_date = next(
+            ((phrase, due) for _, _, phrase, due in sources if phrase is not None), (None, None)
+        )
+        self._conn.execute(
+            "UPDATE items SET task = ?, written_owner = ?, due_phrase = ?, due_date = ? WHERE id = ?",
+            (task, written_owner, due_phrase, due_date, item_id),
+        )
+
+    def _merge_items(self, *, loser: int, survivor: int) -> None:
+        """Fold `loser` into `survivor`: same dedupe key, so same Persons; Done wins (FR-11).
+
+        The loser is retired first so the survivor can take the shared key without tripping `items_live_key`.
+        """
+        self._conn.execute("UPDATE items SET merged_into = ? WHERE id = ?", (survivor, loser))
+        self._conn.execute("UPDATE items SET merged_into = ? WHERE merged_into = ?", (survivor, loser))
+        self._conn.execute("UPDATE sources SET item_id = ? WHERE item_id = ?", (survivor, loser))
+        self._conn.execute("DELETE FROM item_owners WHERE item_id = ?", (loser,))
+        self._conn.execute(
+            """
+            UPDATE items SET (done_at, done_by) = (SELECT done_at, done_by FROM items WHERE id = ?)
+            WHERE id = ? AND done_at IS NULL
+            """,
+            (loser, survivor),
+        )
+        self._derive_item_fields(survivor)
 
     def _set_owner(self, item_id: int, owner: Resolution) -> None:
         """Replace the item's owner fields with a fresh resolution (FR-11: updated in place)."""

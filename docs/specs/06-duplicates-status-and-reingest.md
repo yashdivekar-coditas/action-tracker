@@ -1,6 +1,6 @@
 # 06 — Duplicates, status across Sources, and re-ingest
 
-Status: ready-for-agent
+Status: done
 Blocked by: 03, 05
 Requirements: FR-9, FR-10, FR-11, FR-12 (merge/done counts)
 
