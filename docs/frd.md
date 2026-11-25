@@ -149,15 +149,18 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 
 ### FR-13 `actiontrack list`
 - With no filters: Open items only (Overdue included).
-- Columns: id, Owner(s), task, due (Due Date, else raw Due Phrase, else `—`), status (`open`, `overdue (Nd)`, `done`), latest Source meeting title and date.
-- Order: Overdue (most late first), then Open by Due Date, then undated items last; ties by id.
+- Columns: id, Owner(s), task, due (Due Date, else raw Due Phrase, else `—`), status (`open`, `overdue (Nd)`, `done`), latest Source meeting date and title (`MEETING` column).
+- The table fits the terminal width (100 columns when it can't be detected): the Owner, task and meeting cells are truncated with `…`, widest first, but each keeps at least 10 characters, so a very narrow terminal can still overflow. `--json` is never truncated.
+- Order: Overdue (most late first), then dated items by Due Date, then undated items last; ties by id. With `--all`, Done items sort among the rest by Due Date.
 - Filters, combined with AND:
-  - `--owner <name>`: full name, alias, or a first name unique among known Persons (all Attendees plus the roster); also `unassigned`. A first name matching several Persons is an error listing them. A shared or Team Item matches each of its Owners.
+  - `--owner <name>`: full name, alias, or a first name unique among known Persons (all Attendees plus the roster); also `unassigned` (case-insensitive). Tried in that order: exact full name, then alias, then first name. A name matching several Persons, or none, is an error (exit `2`) listing the candidates; this holds with no database too, where the known Persons are the roster only. `--owner` never selects Ambiguous or Unknown items. A shared or Team Item matches each of its Owners.
   - `--status open|done|overdue`: `open` = not Done (includes Overdue); `overdue` = Open with a Due Date before today; `done` = Done.
   - `--due-before <YYYY-MM-DD>`: Due Date strictly before that date; undated items excluded.
-  - `--all`: every status.
+  - `--all`: every status; it overrides `--status`.
+  - A bad `--status` value or a bad `--due-before` date is an error (exit `2`). An empty result prints `No matching items.` and exits `0`.
 - Owner column: the resolved Persons (every Attendee for a Team Item), or `Priya (ambiguous: Priya Nair, Priya Shah)`, `Karan (unknown)` or `unassigned`.
-- `--json`: an array of item objects with all fields above plus every Source. Owner fields: `owner_kind` (`person`, `team`, `ambiguous`, `unknown`, `unassigned`), `persons` (full names), `written_owner` (as written) and `candidates` (Ambiguous only).
+- `--json`: an array of item objects with all fields above plus every Source (`file`, `path`, `line`, `raw_line`, `checked`, and the note's `title` and `meeting_date`). Owner fields: `owner_kind` (`person`, `team`, `ambiguous`, `unknown`, `unassigned`), `persons` (full names), `written_owner` (as written) and `candidates` (Ambiguous only).
+- JSON `status` is `open` (Overdue included, as in `--status open`) or `done`; `days_overdue` is the whole days past the Due Date for an Overdue item and `null` otherwise.
 - Overdue is computed at run time from today (or `--today`), never stored.
 
 ## 3. Done

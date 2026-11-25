@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -18,7 +19,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from actiontrack import config, ingest, store
+from actiontrack import config, ingest, owners, store
 
 PROG = "actiontrack"
 
@@ -30,6 +31,9 @@ EXIT_USAGE = 2
 DEFAULT_DB = Path(".actiontrack.db")
 ENV_DB = "ACTIONTRACK_DB"
 ENV_TODAY = "ACTIONTRACK_TODAY"
+LIST_STATUSES = ("open", "done", "overdue")
+UNASSIGNED = "unassigned"  # the `list --owner` value that selects Unassigned items
+
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 
 
@@ -87,7 +91,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "list",
         parents=[_global_options_parser()],
         help="show stored Action Items",
-        description="Show every stored Action Item in id order.",
+        description=(
+            "Show stored Action Items: Open ones by default, Overdue first (most late first), "
+            "then by Due Date with undated items last. Filters combine with AND."
+        ),
+    )
+    list_.add_argument(
+        "--status", choices=LIST_STATUSES, help="only items with this status; open includes Overdue (default: open)"
+    )
+    list_.add_argument("--all", action="store_true", help="show items of every status (overrides --status)")
+    list_.add_argument(
+        "--due-before", type=_day_argument, metavar="YYYY-MM-DD", help="only items due strictly before this date"
+    )
+    list_.add_argument(
+        "--owner", help="only items owned by this Person: full name, alias or unique first name; or 'unassigned'"
     )
     list_.add_argument("--json", action="store_true", help="print the items as a JSON array")
     list_.set_defaults(handler=_cmd_list)
@@ -123,19 +140,26 @@ def _resolve_global_options(args: argparse.Namespace) -> GlobalOptions:
     db = args.db or Path(os.environ.get(ENV_DB) or DEFAULT_DB)
     # An explicit `--today ''` is an error, but an empty environment variable counts as unset.
     today_text: str | None = args.today if args.today is not None else os.environ.get(ENV_TODAY) or None
-    return GlobalOptions(db=db, config=args.config, today=_parse_today(today_text))
+    today = date.today() if today_text is None else _parse_day(today_text, "--today")
+    return GlobalOptions(db=db, config=args.config, today=today)
 
 
-def _parse_today(text: str | None) -> date:
-    if text is None:
-        return date.today()
+def _parse_day(text: str, flag: str) -> date:
     # fromisoformat alone also accepts forms like 20261015 and 2026-W42-1.
     if _ISO_DAY.fullmatch(text):
         try:
             return date.fromisoformat(text)
         except ValueError:
             pass
-    raise UsageError(f"--today must be a YYYY-MM-DD date, got {text!r}")
+    raise UsageError(f"{flag} must be a YYYY-MM-DD date, got {text!r}")
+
+
+def _day_argument(text: str) -> str:
+    """argparse `type` for `--due-before`: the validated ISO date text; argparse turns the error into exit 2."""
+    try:
+        return _parse_day(text, "--due-before").isoformat()
+    except UsageError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 # --- commands ---------------------------------------------------------------------
@@ -167,7 +191,16 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     try:
         if options.db.exists():  # a read must not leave a new, empty database behind
             with store.transaction(options.db) as db:
-                stored = db.list_items()
+                owner = _resolve_owner_filter(args.owner, db.attendees(), options)
+                stored = db.list_items(
+                    options.today,
+                    status=None if args.all else args.status or "open",
+                    due_before=args.due_before,
+                    owner=owner,
+                    unassigned=_is_unassigned(args.owner),
+                )
+        else:
+            _resolve_owner_filter(args.owner, [], options)  # with no database only the roster is known
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
@@ -177,6 +210,25 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     else:
         _print_items_table(stored)
     return EXIT_OK
+
+
+def _is_unassigned(written: str | None) -> bool:
+    return written is not None and written.casefold() == UNASSIGNED
+
+
+def _resolve_owner_filter(written: str | None, attendees: list[str], options: GlobalOptions) -> str | None:
+    """The one known Person `--owner` names (None for no filter or `unassigned`); no match or several exit 2 (FR-13)."""
+    if written is None or _is_unassigned(written):
+        return None
+    loaded = _load_config(options)
+    roster = loaded.people if loaded else ()
+    matches = owners.find_person(written, attendees, roster)
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        raise UsageError(f"--owner {written!r} is ambiguous: {', '.join(matches)}")
+    known = ", ".join(dict.fromkeys([*attendees, *(person.name for person in roster)]))
+    raise UsageError(f"--owner {written!r} matches nobody; known people: {known or 'none'}")
 
 
 def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:
@@ -213,9 +265,11 @@ def _load_config(options: GlobalOptions) -> config.Config | None:
 # --- output -----------------------------------------------------------------------
 
 NO_VALUE = "—"
+MIN_FLEXIBLE_WIDTH = 10
 
 
 def _item_status(item: store.StoredItem) -> str:
+    """`open` includes Overdue, as in `--status open`; `days_overdue` tells the two apart in JSON."""
     return "done" if item.done else "open"
 
 
@@ -231,6 +285,7 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
         "due_phrase": item.due_phrase,
         "due_date": item.due_date,
         "status": _item_status(item),
+        "days_overdue": item.days_overdue,
         "sources": [
             {
                 "file": Path(source.path).name,
@@ -238,6 +293,8 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
                 "line": source.line_no,
                 "raw_line": source.raw_line,
                 "checked": source.checked,
+                "title": source.title,
+                "meeting_date": source.meeting_date,
             }
             for source in item.sources
         ],
@@ -259,23 +316,43 @@ def _owner_label(item: store.StoredItem) -> str:
             return item.written_owner or NO_VALUE
 
 
+def _status_label(item: store.StoredItem) -> str:
+    if item.days_overdue is not None:
+        return f"overdue ({item.days_overdue}d)"
+    return _item_status(item)
+
+
+def _fit(text: str, width: int) -> str:
+    return text if len(text) <= width else text[: width - 1] + "…"
+
+
 def _print_items_table(stored: list[store.StoredItem]) -> None:
-    # shortcut: basic aligned columns, no truncation; spec 07 adds terminal-width rendering.
-    header = ("ID", "OWNER", "TASK", "DUE", "STATUS")
+    if not stored:
+        print("No matching items.")
+        return
+    header = ("ID", "OWNER", "TASK", "DUE", "STATUS", "MEETING")
     rows = [
         (
             str(item.id),
             _printable(_owner_label(item)),
             _printable(item.task),
             _printable(item.due_date or item.due_phrase or NO_VALUE),
-            _item_status(item),
+            _status_label(item),
+            # Date first, so a truncated title never hides it.
+            _printable(f"{item.latest_source.meeting_date} {item.latest_source.title}") if item.sources else NO_VALUE,
         )
         for item in stored
     ]
     widths = [max(len(row[col]) for row in (header, *rows)) for col in range(len(header))]
+    available = shutil.get_terminal_size(fallback=(100, 24)).columns - 2 * (len(header) - 1)
+    flexible = tuple(header.index(name) for name in ("OWNER", "TASK", "MEETING"))  # the columns that can be long
+    while sum(widths) > available:
+        widest = max(flexible, key=lambda col: widths[col])
+        if widths[widest] <= MIN_FLEXIBLE_WIDTH:
+            break  # nothing left to shrink; the table overflows rather than lose more text
+        widths[widest] -= 1
     for row in (header, *rows):
-        print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)).rstrip())
-
+        print("  ".join(_fit(cell, width).ljust(width) for cell, width in zip(row, widths)).rstrip())
 
 
 def _print_ingest_report(report: ingest.IngestReport) -> None:

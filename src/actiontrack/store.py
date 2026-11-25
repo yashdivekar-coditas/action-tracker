@@ -129,6 +129,8 @@ class StoredSource:
     line_no: int
     raw_line: str
     checked: bool
+    title: str  # of the Source's Meeting Note
+    meeting_date: str  # ISO date of the Source's Meeting Note
 
 
 @dataclass(frozen=True)
@@ -142,7 +144,12 @@ class StoredItem:
     due_phrase: str | None
     due_date: str | None
     done: bool
+    days_overdue: int | None  # set only when the item is Overdue as of the `today` it was listed with
     sources: tuple[StoredSource, ...]
+
+    @property
+    def latest_source(self) -> StoredSource:
+        return self.sources[-1]  # the store orders Sources by Meeting Date, then path, then line
 
 
 class Store:
@@ -264,33 +271,74 @@ class Store:
         if live is None:
             return None
         already_done = not self._mark_done(live, when, by="cli")
-        item = next(i for i in self.list_items() if i.id == live)
+        item = next(i for i in self.list_items(when) if i.id == live)
         return DoneResult(item, already_done, item_id if live != item_id else None)
 
-    def list_items(self) -> list[StoredItem]:
-        """Every live (not merged) item in id order, each with its Sources."""
+    def list_items(
+        self,
+        today: date,
+        *,
+        status: str | None = None,
+        due_before: str | None = None,
+        owner: str | None = None,
+        unassigned: bool = False,
+    ) -> list[StoredItem]:
+        """Live (not merged) items matching every given filter, each with its Sources, in list order (FR-13).
+
+        `status` is `open` (not Done, Overdue included), `overdue` or `done`; None means every status.
+        `due_before` is an ISO date; items due on or after it, and undated items, are left out.
+        `owner` is a Person's full name: items listing them as an Owner (shared and Team Items included).
+        `unassigned` selects Unassigned items instead. Ambiguous and Unknown items match neither.
+        Overdue means not Done with a Due Date before `today`. Order: Overdue (most late first), then
+        dated items by Due Date, then undated ones; ties by id.
+        """
+        overdue = "(done_at IS NULL AND due_date < :today)"
+        conditions = ["merged_into IS NULL"]
+        match status:
+            case "open":
+                conditions.append("done_at IS NULL")
+            case "overdue":
+                conditions.append(overdue)
+            case "done":
+                conditions.append("done_at IS NOT NULL")
+        if due_before is not None:
+            conditions.append("due_date < :due_before")  # NULL (undated) never compares true
+        if owner is not None:
+            conditions.append("id IN (SELECT item_id FROM item_owners WHERE person = :owner)")
+        if unassigned:
+            conditions.append("owner_kind = 'unassigned'")
+
         sources: dict[int, list[StoredSource]] = {}
-        for item_id, path, line_no, raw_line, checked in self._conn.execute(
+        for item_id, path, line_no, raw_line, checked, title, meeting_date in self._conn.execute(
             """
-            SELECT s.item_id, s.note_path, s.line_no, s.raw_line, s.checked
+            SELECT s.item_id, s.note_path, s.line_no, s.raw_line, s.checked, n.title, n.meeting_date
             FROM sources s JOIN notes n ON n.path = s.note_path
             ORDER BY n.meeting_date, s.note_path, s.line_no
             """
         ):
-            sources.setdefault(item_id, []).append(StoredSource(path, line_no, raw_line, bool(checked)))
+            sources.setdefault(item_id, []).append(StoredSource(path, line_no, raw_line, bool(checked), title, meeting_date))
         persons: dict[int, list[str]] = {}
         for item_id, person in self._conn.execute("SELECT item_id, person FROM item_owners ORDER BY rowid"):
             persons.setdefault(item_id, []).append(person)
         return [
             StoredItem(item_id, kind, tuple(persons.get(item_id, ())), tuple(json.loads(candidates or "[]")),
-                       owner, task, due_phrase, due_date, done_at is not None, tuple(sources.get(item_id, ())))
-            for item_id, kind, candidates, owner, task, due_phrase, due_date, done_at in self._conn.execute(
-                """
-                SELECT id, owner_kind, candidates, written_owner, task, due_phrase, due_date, done_at
-                FROM items WHERE merged_into IS NULL ORDER BY id
-                """
+                       owner, task, due_phrase, due_date, done_at is not None, days_overdue,
+                       tuple(sources.get(item_id, ())))
+            for item_id, kind, candidates, owner, task, due_phrase, due_date, done_at, days_overdue in self._conn.execute(
+                f"""
+                SELECT id, owner_kind, candidates, written_owner, task, due_phrase, due_date, done_at,
+                       CASE WHEN {overdue} THEN CAST(julianday(:today) - julianday(due_date) AS INTEGER) END
+                FROM items WHERE {" AND ".join(conditions)}
+                ORDER BY CASE WHEN {overdue} THEN 0 WHEN due_date IS NOT NULL THEN 1 ELSE 2 END, due_date, id
+                """,
+                {"today": today.isoformat(), "due_before": due_before, "owner": owner},
             )
         ]  # fmt: skip
+
+    def attendees(self) -> list[str]:
+        """Every Attendee full name across ingested notes, each once, in first-seen order."""
+        rows = self._conn.execute("SELECT attendees FROM notes ORDER BY meeting_date, path").fetchall()
+        return list(dict.fromkeys(name for (names,) in rows for name in json.loads(names)))
 
     def _derive_item_fields(self, item_id: int) -> None:
         """Set the item's task, written owner, Due Phrase and Due Date from its Sources (FR-9).

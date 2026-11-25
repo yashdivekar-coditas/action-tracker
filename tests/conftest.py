@@ -82,8 +82,8 @@ class Harness:
         return path
 
     def items(self) -> list[dict[str, Any]]:
-        """Run `actiontrack list --json` and return the stored Action Items."""
-        result = self.run("list", "--json")
+        """Run `actiontrack list --json --all` and return every stored Action Item, Done included."""
+        result = self.run("list", "--json", "--all")
         assert result.code == 0, result.err
         return result.json
 

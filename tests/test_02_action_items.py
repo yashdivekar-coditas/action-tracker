@@ -62,9 +62,9 @@ def test_list_prints_a_table_of_items_fr13(harness: Harness) -> None:
 
     assert result.code == 0
     lines = result.out.splitlines()
-    assert lines[0].split() == ["ID", "OWNER", "TASK", "DUE", "STATUS"]
+    assert lines[0].split() == ["ID", "OWNER", "TASK", "DUE", "STATUS", "MEETING"]
     assert lines[1].split()[:3] == ["1", "Priya", "Nair"]  # owner resolved (FR-7)
-    assert lines[1].rstrip().endswith("2026-10-02  open")  # Due Date once resolved (FR-8)
+    assert lines[1].rstrip().endswith("2026-10-02  overdue (13d)  2026-09-30 Test meeting")  # Due Date once resolved (FR-8), past --today (FR-13)
     assert lines[2].split()[:2] == ["2", "unassigned"]
 
 
@@ -319,8 +319,8 @@ def test_table_cells_follow_the_same_rules_as_text_items_fr6(harness: Harness) -
 
     assert [split(i) for i in items] == [
         ("Anita", "Refresh the brand kit", "Fri"),
-        (None, "Pick a venue", None),
         (None, "Book the room", "9 Oct"),
+        (None, "Pick a venue", None),  # undated items list last (FR-13)
     ]
 
 
