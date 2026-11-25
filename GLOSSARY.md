@@ -64,7 +64,7 @@ _Avoid_: Copy, repeat
 An Action Item is Open until it is marked Done, either by a checked box in any Source or by a person; Done is final and a later unchecked mention does not reopen it. An Open item past its Due Date is Overdue.
 
 **Due Phrase**:
-The deadline exactly as written in the note ("by Friday", "mid-October"); always kept, even when it cannot be resolved.
+The deadline as written in the note, without its leading "by" or "due" ("Friday" from "by Friday", "mid-October"); always kept, even when it cannot be resolved.
 
 **Due Date**:
 The calendar date a Due Phrase resolves to, relative to the Meeting Date; absent when the phrase is missing or unresolvable.
