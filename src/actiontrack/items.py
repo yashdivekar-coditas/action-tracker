@@ -49,6 +49,8 @@ _ACTION_LINE = re.compile(r"^\s*ACTION:\s*(?P<text>.*\S)\s*$")
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 _TABLE_DELIMITER = re.compile(r"^\s*\|?(?:\s*:?-+:?\s*\|)+\s*:?-*:?\s*$")
 _TABLE_COLUMNS = ("owner", "action", "due")  # FR-4: found by header name, any order or case
+_EMPTY_CELLS = frozenset({"", "—", "–", "-", "n/a"})
+_DUE_CELL_PREFIX = re.compile(r"^(?:results\s+)?(?:by|due)\s+", re.IGNORECASE)
 _FENCE_OPEN = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 _CODE_INDENT = 4  # columns; a tab counts as 4
@@ -112,7 +114,8 @@ def _checkbox(line_no: int, line: str, match: re.Match[str]) -> Occurrence:
     checked = match["mark"] in "xX"
     if mention := _MENTION.match(match["text"]):
         task, due = _split_due(mention["text"])
-        return Occurrence(line_no, line, Shape.MENTION, checked, mention["handle"], task, due)
+        if task:  # `@karan:` alone has no task, so it falls through to plain text below
+            return Occurrence(line_no, line, Shape.MENTION, checked, mention["handle"], task, due)
     owner, task, due = split(match["text"])
     return Occurrence(line_no, line, Shape.CHECKBOX, checked, owner, task, due)
 
@@ -139,12 +142,15 @@ def _table_row(line_no: int, line: str, columns: dict[str, int]) -> Occurrence |
     def cell(column: str) -> str | None:
         position = columns[column]
         value = cells[position] if position < len(cells) else ""
-        return value or None
+        return None if value.casefold() in _EMPTY_CELLS else value
 
     task = cell("action")
     if task is None:
         return None
-    return Occurrence(line_no, line, Shape.TABLE, False, cell("owner"), task, cell("due"))
+    due = cell("due")
+    if due is not None:  # same stored form as a text Due Phrase: `by Fri` -> `Fri`
+        due = _DUE_CELL_PREFIX.sub("", due).rstrip(_PHRASE_TRIM) or None
+    return Occurrence(line_no, line, Shape.TABLE, False, cell("owner"), task, due)
 
 
 # --- owner / task / Due Phrase split (FR-6) ----------------------------------------
@@ -166,12 +172,15 @@ _BY_CLAUSE = re.compile(_SEP + r"by\s+(?P<phrase>(?:(?!\sby\s).)+?)\s*$", re.IGN
 # A bare trailing deadline word, e.g. `circulate the summary tomorrow` (FRD §6).
 _BARE_DEADLINE = re.compile(_SEP + r"(?P<phrase>(?:EOD\s+)?tomorrow|today|EOD)\s*$", re.IGNORECASE)
 _TASK_TRIM = " \t,;—–-"
+_PHRASE_TRIM = _TASK_TRIM + ".!?"  # `by Friday.` -> `Friday`
 
 
 def split(text: str) -> tuple[str | None, str, str | None]:
     """Split item text into (owner part, task, Due Phrase); owner and Due Phrase may be None."""
     owner, rest = _split_owner(text)
     task, due = _split_due(rest)
+    if not task:  # e.g. `Karan to by Friday`: keep everything written as the task
+        return None, text.strip(), None
     return owner, task, due
 
 
@@ -192,5 +201,5 @@ def _is_owner_part(text: str) -> bool:
 def _split_due(text: str) -> tuple[str, str | None]:
     for clause in (_DUE_CLAUSE, _BY_CLAUSE, _BARE_DEADLINE):
         if match := clause.search(text):
-            return text[: match.start()].strip(_TASK_TRIM), match["phrase"].rstrip(_TASK_TRIM)
+            return text[: match.start()].strip(_TASK_TRIM), match["phrase"].rstrip(_PHRASE_TRIM)
     return text.strip(_TASK_TRIM), None

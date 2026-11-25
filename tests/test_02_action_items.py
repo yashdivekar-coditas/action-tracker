@@ -301,3 +301,34 @@ def test_malformed_note_stores_no_items_fr3(harness: Harness) -> None:
 
     assert result.json["items_new"] == 0
     assert harness.items() == []
+
+
+# --- review fixes: consistent values (FR-6) ----------------------------------------
+
+
+def test_table_cells_follow_the_same_rules_as_text_items_fr6(harness: Harness) -> None:
+    items = harness.ingest_note(
+        "| Owner | Action | Due |\n"
+        "|---|---|---|\n"
+        "| Anita | Refresh the brand kit | by Fri |\n"
+        "| — | Pick a venue | — |\n"
+        "| n/a | Book the room | due 9 Oct. |\n"
+    )
+
+    assert [split(i) for i in items] == [
+        ("Anita", "Refresh the brand kit", "Fri"),
+        (None, "Pick a venue", None),
+        (None, "Book the room", "9 Oct"),
+    ]
+
+
+def test_trailing_sentence_punctuation_is_not_part_of_the_due_phrase_fr6(harness: Harness) -> None:
+    items = harness.ingest_note("- [ ] Karan to pay the invoice by Friday.\nACTION: Sam to file it, due 15 October!\n")
+
+    assert [i["due_phrase"] for i in items] == ["Friday", "15 October"]
+
+
+def test_an_item_never_has_an_empty_task_fr6(harness: Harness) -> None:
+    items = harness.ingest_note("- [ ] @karan:\n- [ ] Karan to by Friday\n")
+
+    assert [split(i) for i in items] == [(None, "@karan:", None), ("Karan", "by Friday", None)]
