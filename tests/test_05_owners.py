@@ -123,3 +123,48 @@ def test_no_owner_part_is_unassigned_fr7_step3(harness: Harness) -> None:
 
     assert owner(item) == ("unassigned", [], [])
     assert item["written_owner"] is None
+
+
+# --- People Roster fallback (FR-7 step 5) ------------------------------------------
+
+
+def test_name_missing_from_attendees_falls_back_to_the_roster_fr7_step5(harness: Harness) -> None:
+    harness.write_roster(("Karan Joshi", []), ("Meera Iyer", []))
+
+    assert owner(resolve(harness, "Karan to send the invoices")) == ("person", ["Karan Joshi"], [])
+
+
+def test_without_a_config_there_is_no_roster_fallback_fr7_step5(harness: Harness) -> None:
+    assert owner(resolve(harness, "Karan to send the invoices"))[0] == "unknown"
+
+
+def test_roster_alias_counts_as_a_match_fr7_step5(harness: Harness) -> None:
+    harness.write_roster(("Karan Joshi", ["KJ"]), ("Lena Fischer", ["Lenny"]))
+
+    items = harness.ingest_note("- [ ] KJ to send the invoices\n- [ ] Lenny to draft the survey\n")
+
+    assert [owner(i) for i in items] == [("person", ["Karan Joshi"], []), ("person", ["Lena Fischer"], [])]
+
+
+def test_attendees_win_over_the_roster_fr7_step5(harness: Harness) -> None:
+    harness.write_roster(("Rahul Verma", []))
+
+    assert owner(resolve(harness, "Rahul to fix the bug"))[1] == ["Rahul Mehta"]  # attending, so no fallback
+
+
+def test_several_roster_matches_are_ambiguous_fr7_step6(harness: Harness) -> None:
+    harness.write_roster(("Sam Okafor", []), ("Sam Lee", []))
+
+    assert owner(resolve(harness, "Sam to book the room")) == ("ambiguous", [], ["Sam Okafor", "Sam Lee"])
+
+
+def test_reingest_after_a_roster_fix_updates_the_owner_and_keeps_the_id_fr7_fr11(harness: Harness) -> None:
+    before = resolve(harness, "Karan to send the invoices")
+    harness.write_roster(("Karan Joshi", []))
+
+    result = harness.ingest()
+
+    (after,) = harness.items()
+    assert result.json["items_new"] == 0
+    assert (before["id"], before["owner_kind"]) == (after["id"], "unknown")
+    assert owner(after) == ("person", ["Karan Joshi"], [])

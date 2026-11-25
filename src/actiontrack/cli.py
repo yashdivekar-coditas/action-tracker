@@ -131,12 +131,12 @@ def _parse_today(text: str | None) -> date:
 
 
 def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
-    _load_config(options)  # validated early; its roster feeds Owner resolution (spec 05)
+    loaded = _load_config(options)  # optional; its People Roster is the FR-7 step 5 fallback
     folder: Path = args.folder
     if not folder.is_dir():
         raise UsageError(f"folder not found: {folder}")
     try:
-        report = ingest.run(folder, options.db)
+        report = ingest.run(folder, options.db, loaded.people if loaded else ())
     except ingest.FolderError as exc:
         raise UsageError(str(exc)) from exc
     except store.StoreError as exc:

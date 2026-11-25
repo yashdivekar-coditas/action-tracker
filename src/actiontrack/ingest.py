@@ -6,11 +6,12 @@ failures abort the run, and `store.transaction` rolls everything back.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from actiontrack import items, notes, owners, store
+from actiontrack import config, items, notes, owners, store
 
 NOTE_SUFFIX = ".md"
 
@@ -95,8 +96,11 @@ class IngestReport:
         }
 
 
-def run(folder: Path, db_path: Path) -> IngestReport:
+def run(folder: Path, db_path: Path, roster: Sequence[config.Person] = ()) -> IngestReport:
     """Ingest every `.md` file directly inside `folder` into the database at `db_path`.
+
+    `roster` is the People Roster from the config (empty without one), used for Owners
+    that match no Attendee (FR-7 step 5).
 
     Raises `FolderError` if the folder can't be listed (before the database is touched)
     and `store.StoreError` if the database fails (the run is rolled back).
@@ -115,7 +119,7 @@ def run(folder: Path, db_path: Path) -> IngestReport:
             note_path = path.resolve()
             db.upsert_note(note_path, parsed.note)
             for occurrence in parsed.occurrences:
-                owner = owners.resolve(occurrence.owner_part, parsed.note.attendees)
+                owner = owners.resolve(occurrence.owner_part, parsed.note.attendees, roster)
                 result = db.record_occurrence(note_path, occurrence, parsed.note.meeting_date, owner=owner)
                 report.items_new += result.new_item
                 report.items_done += result.newly_done

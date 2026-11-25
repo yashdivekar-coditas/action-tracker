@@ -11,6 +11,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from actiontrack.config import Person
+
 
 class OwnerKind(StrEnum):
     PERSON = "person"  # one or more Persons (several for a shared item)
@@ -36,8 +38,10 @@ _TEAM_WORDS = frozenset({"team", "everyone", "all"})  # FR-7 step 2
 _UNASSIGNED_WORDS = frozenset({"tbd", "someone", "somebody", "anyone", "?"})  # FR-7 step 3
 
 
-def resolve(owner_part: str | None, attendees: Sequence[str]) -> Resolution:
-    """Resolve `owner_part` (as written) against the meeting's `attendees` (full names)."""
+def resolve(owner_part: str | None, attendees: Sequence[str], roster: Sequence[Person] = ()) -> Resolution:
+    """Resolve `owner_part` (as written) against the meeting's `attendees` (full names),
+    then the People Roster for names no Attendee matches (FR-7 step 5; empty without a config).
+    """
     names = [name.removeprefix("@") for name in _JOINERS.split(owner_part or "") if name.strip()]
     if not names:
         return Resolution(OwnerKind.UNASSIGNED)
@@ -54,7 +58,7 @@ def resolve(owner_part: str | None, attendees: Sequence[str]) -> Resolution:
             continue
         if word in _UNASSIGNED_WORDS:
             continue
-        matches = _matching(name, attendees)
+        matches = _matching(name, attendees) or _roster_matching(name, roster)
         if len(matches) == 1:
             persons.append(matches[0])
         elif matches:
@@ -76,6 +80,16 @@ def resolve(owner_part: str | None, attendees: Sequence[str]) -> Resolution:
 def _matching(name: str, people: Sequence[str]) -> list[str]:
     """`people` whose full name matches `name` (FR-7 step 4), ignoring case."""
     return [person for person in people if _names_match(name, person)]
+
+
+def _roster_matching(name: str, roster: Sequence[Person]) -> list[str]:
+    """Roster Persons whose full name matches `name` or who have it as an alias, ignoring case."""
+    written = name.strip().casefold()
+    return [
+        person.name
+        for person in roster
+        if _names_match(name, person.name) or any(alias.casefold() == written for alias in person.aliases)
+    ]
 
 
 def _names_match(written: str, full_name: str) -> bool:
