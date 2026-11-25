@@ -79,10 +79,12 @@ def test_ambiguous_unknown_and_unassigned_items_can_be_closed_fr14(harness: Harn
     assert harness.items()[0]["status"] == "done"
 
 
-def test_a_merged_id_closes_the_survivor_and_says_so_fr14_fr11(harness: Harness) -> None:
-    for name, date, attendees in (("a.md", "2026-09-01", "Priya Nair"), ("b.md", "2026-09-08", "Karan Rao")):
+def merge_two_into_one(harness: Harness) -> None:
+    """Items 1 and 2 are one task; a roster change merges 2 into 1."""
+    for name, meeting_date, attendees in (("a.md", "2026-09-01", "Priya Nair"), ("b.md", "2026-09-08", "Karan Rao")):
         harness.write(
-            name, f"# Meeting: {name}\nDate: {date}\nAttendees: {attendees}\n\n- [ ] Karan to send the invoices\n"
+            name,
+            f"# Meeting: {name}\nDate: {meeting_date}\nAttendees: {attendees}\n\n- [ ] Karan to send the invoices\n",
         )
     assert harness.ingest().code == 0
     assert [i["id"] for i in harness.items()] == [1, 2]
@@ -90,11 +92,35 @@ def test_a_merged_id_closes_the_survivor_and_says_so_fr14_fr11(harness: Harness)
     assert harness.ingest().code == 0
     assert [i["id"] for i in harness.items()] == [1]
 
+
+def test_a_merged_id_closes_the_survivor_and_says_so_fr14_fr11(harness: Harness) -> None:
+    merge_two_into_one(harness)
+
     result = harness.run("done", "2")
 
     assert result.code == 0, result.err
     assert "#2 was merged into #1" in result.out
     assert harness.items()[0]["status"] == "done"
+
+
+def test_done_json_on_a_merged_id_is_the_survivor_without_a_redirect_line_fr14_fr11(harness: Harness) -> None:
+    merge_two_into_one(harness)
+
+    result = harness.run("done", "2", "--json")
+
+    assert result.code == 0, result.err
+    assert result.json == harness.items()[0]
+    assert result.json["id"] == 1 and result.json["status"] == "done"
+
+
+def test_done_json_on_an_already_done_item_is_the_item_fr14(harness: Harness) -> None:
+    seed(harness, OPEN)
+    harness.run("done", "1")
+
+    result = harness.run("done", "1", "--json")
+
+    assert result.code == 0, result.err
+    assert result.json == harness.items()[0]
 
 
 def test_an_unknown_id_exits_one_fr14(harness: Harness) -> None:
@@ -105,6 +131,15 @@ def test_an_unknown_id_exits_one_fr14(harness: Harness) -> None:
     assert result.code == 1
     assert "99" in result.err
     assert harness.items()[0]["status"] == "open"
+
+
+def test_an_id_beyond_the_integer_range_is_an_unknown_id_fr14_nfr2(harness: Harness) -> None:
+    seed(harness, OPEN)
+
+    result = harness.run("done", "99999999999999999999")
+
+    assert result.code == 1
+    assert "99999999999999999999" in result.err
 
 
 def test_a_missing_database_is_an_unknown_id_and_is_not_created_fr14(harness: Harness) -> None:
