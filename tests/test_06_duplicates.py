@@ -256,15 +256,15 @@ def test_an_older_source_ingested_later_does_not_override_the_due_date_fr9(harne
     assert (item["due_phrase"], item["due_date"]) == ("Monday", "2026-09-14")
 
 
-def test_removing_the_due_phrase_from_the_only_source_clears_the_due_date_fr8(harness: Harness) -> None:
+def test_reingest_rederives_the_due_date_of_a_sole_source_fr8(harness: Harness) -> None:
     note(harness, "a.md", "2026-09-01", BASE)
     ingest(harness)
-    note(harness, "a.md", "2026-09-01", "- [ ] Rahul to send the revised quote to Acme")
+    note(harness, "a.md", "2026-09-08", BASE)  # same line, new Meeting Date
 
     ingest(harness)
 
     [item] = harness.items()
-    assert (item["due_phrase"], item["due_date"]) == (None, None)
+    assert (item["due_phrase"], item["due_date"]) == ("Friday", "2026-09-11")
 
 
 def test_an_older_source_ingested_later_restores_a_due_date_fr9(harness: Harness) -> None:

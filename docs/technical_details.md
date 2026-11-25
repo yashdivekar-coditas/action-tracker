@@ -99,13 +99,13 @@ CREATE TABLE notes (
 
 CREATE TABLE items (
   id            INTEGER PRIMARY KEY,       -- stable, never reused (FR-11)
-  task          TEXT NOT NULL,             -- task text from the latest Source
+  task          TEXT NOT NULL,             -- derived: task text from the latest Source
   dedupe_key    TEXT NOT NULL,             -- owners + normalised task (FR-9)
   owner_kind    TEXT NOT NULL CHECK (owner_kind IN
                   ('person','team','ambiguous','unknown','unassigned')),
   written_owner TEXT,                      -- as written, e.g. 'Priya'
   candidates    TEXT,                      -- JSON array, Ambiguous only
-  due_phrase    TEXT,                      -- raw, from latest Source
+  due_phrase    TEXT,                      -- derived: from the latest Source that has one
   due_date      TEXT,                      -- ISO or NULL
   done_at       TEXT,                      -- NULL = Open; set once, never cleared
   done_by       TEXT CHECK (done_by IN ('note','cli')),
@@ -126,6 +126,10 @@ CREATE TABLE sources (                     -- one row per occurrence in a note
   line_no   INTEGER NOT NULL,
   raw_line  TEXT    NOT NULL,
   checked   INTEGER NOT NULL,              -- 1 if [x]/[X]
+  task          TEXT,                      -- what this line said; the item's fields are derived
+  written_owner TEXT,                      --   from its Sources (FR-9): task and owner from the latest,
+  due_phrase    TEXT,                      --   Due Phrase and Due Date from the latest that has a Due Phrase
+  due_date      TEXT,
   PRIMARY KEY (note_path, line_key)        -- re-ingest idempotency (FR-11)
 );
 
@@ -166,7 +170,7 @@ flowchart TD
     H --> K{source note_path+line_key<br/>already stored?}
     K -- yes --> L[update item in place,<br/>merge if keys now collide]
     K -- no --> M{live item with same dedupe_key?}
-    M -- yes --> N[add Source; latest meeting sets due]
+    M -- yes --> N[add Source; re-derive item from its Sources]
     M -- no --> O[insert new item]
     L & N & O --> P[checked? → set done_at once]
     P --> C
