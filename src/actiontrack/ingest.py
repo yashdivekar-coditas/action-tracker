@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from actiontrack import items, notes, store
+from actiontrack import items, notes, owners, store
 
 NOTE_SUFFIX = ".md"
 
@@ -115,7 +115,8 @@ def run(folder: Path, db_path: Path) -> IngestReport:
             note_path = path.resolve()
             db.upsert_note(note_path, parsed.note)
             for occurrence in parsed.occurrences:
-                result = db.record_occurrence(note_path, occurrence, parsed.note.meeting_date)
+                owner = owners.resolve(occurrence.owner_part, parsed.note.attendees)
+                result = db.record_occurrence(note_path, occurrence, parsed.note.meeting_date, owner=owner)
                 report.items_new += result.new_item
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from actiontrack.items import Occurrence
 from actiontrack.notes import Note
+from actiontrack.owners import Resolution
 
 # _MIGRATIONS[n] upgrades a database from user_version n to n + 1.
 _MIGRATIONS: tuple[tuple[str, ...], ...] = (
@@ -62,6 +63,16 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
         """,
         "CREATE INDEX sources_item ON sources (item_id)",
     ),
+    (
+        # One row per Owner: several for a shared or Team Item (FR-7). Persons are full names.
+        """
+        CREATE TABLE item_owners (
+          item_id  INTEGER NOT NULL REFERENCES items (id),
+          person   TEXT    NOT NULL,
+          PRIMARY KEY (item_id, person)
+        )
+        """,
+    ),
 )
 
 # NFR-4: meeting content stays private on a shared machine.
@@ -76,6 +87,7 @@ class StoreError(Exception):
 class RecordResult:
     """What recording one occurrence changed, for the ingest report."""
 
+    item_id: int
     new_item: bool
     newly_done: bool
 
@@ -91,6 +103,9 @@ class StoredSource:
 @dataclass(frozen=True)
 class StoredItem:
     id: int
+    owner_kind: str | None  # None only for items stored before owner resolution existed
+    persons: tuple[str, ...]
+    candidates: tuple[str, ...]
     written_owner: str | None
     task: str
     due_phrase: str | None
@@ -126,7 +141,9 @@ class Store:
             ),
         )
 
-    def record_occurrence(self, note_path: Path, occurrence: Occurrence, meeting_date: date) -> RecordResult:
+    def record_occurrence(
+        self, note_path: Path, occurrence: Occurrence, meeting_date: date, *, owner: Resolution
+    ) -> RecordResult:
         """Store one occurrence as a Source, creating its item unless this line was seen before (FR-11).
 
         A checked occurrence marks its item Done as of the Meeting Date; Done is never cleared (FR-10).
@@ -159,8 +176,9 @@ class Store:
             """,
             (path, occurrence.line_key, item_id, occurrence.line_no, occurrence.raw_line, occurrence.checked),
         )
+        self._set_owner(item_id, owner)
         newly_done = occurrence.checked and self._mark_done(item_id, meeting_date, by="note")
-        return RecordResult(new_item=row is None, newly_done=newly_done)
+        return RecordResult(item_id=item_id, new_item=row is None, newly_done=newly_done)
 
     def list_items(self) -> list[StoredItem]:
         """Every live (not merged) item in id order, each with its Sources."""
@@ -173,16 +191,32 @@ class Store:
             """
         ):
             sources.setdefault(item_id, []).append(StoredSource(path, line_no, raw_line, bool(checked)))
+        persons: dict[int, list[str]] = {}
+        for item_id, person in self._conn.execute("SELECT item_id, person FROM item_owners ORDER BY rowid"):
+            persons.setdefault(item_id, []).append(person)
         return [
-            StoredItem(item_id, owner, task, due_phrase, due_date, done_at is not None,
-                       tuple(sources.get(item_id, ())))
-            for item_id, owner, task, due_phrase, due_date, done_at in self._conn.execute(
+            StoredItem(item_id, kind, tuple(persons.get(item_id, ())), tuple(json.loads(candidates or "[]")),
+                       owner, task, due_phrase, due_date, done_at is not None, tuple(sources.get(item_id, ())))
+            for item_id, kind, candidates, owner, task, due_phrase, due_date, done_at in self._conn.execute(
                 """
-                SELECT id, written_owner, task, due_phrase, due_date, done_at
+                SELECT id, owner_kind, candidates, written_owner, task, due_phrase, due_date, done_at
                 FROM items WHERE merged_into IS NULL ORDER BY id
                 """
             )
         ]  # fmt: skip
+
+    def _set_owner(self, item_id: int, owner: Resolution) -> None:
+        """Replace the item's owner fields with a fresh resolution (FR-11: updated in place)."""
+        self._conn.execute(
+            "UPDATE items SET owner_kind = ?, candidates = ? WHERE id = ?",
+            (owner.kind.value, json.dumps(list(owner.candidates), ensure_ascii=False) if owner.candidates else None,
+             item_id),
+        )  # fmt: skip
+        self._conn.execute("DELETE FROM item_owners WHERE item_id = ?", (item_id,))
+        self._conn.executemany(
+            "INSERT INTO item_owners (item_id, person) VALUES (?, ?)",
+            [(item_id, person) for person in owner.persons],
+        )
 
     def _mark_done(self, item_id: int, when: date, *, by: str) -> bool:
         """Set Done once; returns whether this call changed it."""

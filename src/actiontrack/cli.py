@@ -189,7 +189,10 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
     """One item in `list --json`; keys may be added, never renamed (NFR-6)."""
     return {
         "id": item.id,
+        "owner_kind": item.owner_kind,
+        "persons": list(item.persons),
         "written_owner": item.written_owner,
+        "candidates": list(item.candidates),
         "task": item.task,
         "due_phrase": item.due_phrase,
         "due_date": item.due_date,
