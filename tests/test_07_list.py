@@ -23,6 +23,9 @@ NOTE = (
 )
 
 
+TABLE_HEADER = ["ID", "OWNER", "TASK", "DUE", "STATUS", "MEETING"]
+
+
 def listing(harness: Harness, *flags: str) -> list[dict[str, Any]]:
     result = harness.run("list", "--json", *flags)
     assert result.code == 0, result.err
@@ -106,7 +109,7 @@ def test_no_matching_items_says_so_and_exits_0_fr13(seeded: Harness) -> None:
 
 def test_table_shows_overdue_with_days_late_fr13(seeded: Harness) -> None:
     out = seeded.run("list").out
-    assert out.splitlines()[0].split() == ["ID", "OWNER", "TASK", "DUE", "STATUS"]
+    assert out.splitlines()[0].split() == TABLE_HEADER
     assert "overdue (14d)" in out and "overdue (1d)" in out
     assert "done" not in out
 
@@ -117,3 +120,59 @@ def test_sample_notes_overdue_includes_the_q4_sales_targets_fr13(harness: Harnes
     assert harness.ingest(SAMPLE_NOTES).code == 0
     [item] = [i for i in listing(harness, "--status", "overdue") if "Q4 sales targets" in i["task"]]
     assert (item["persons"], item["days_overdue"]) == (["Meera Iyer"], 12)
+
+
+# --- table rendering (FR-13) ---------------------------------------------------------
+
+
+def test_table_ends_with_the_latest_source_meeting_date_and_title_fr13(harness: Harness) -> None:
+    harness.write("a.md", "# Meeting: Kickoff\nDate: 2026-09-01\nAttendees: Karan Joshi\n\n- [ ] Karan to ship the beta by 2026-10-20\n")
+    harness.write("b.md", "# Meeting: Standup\nDate: 2026-09-20\nAttendees: Karan Joshi\n\n- [ ] Karan to ship the beta\n")
+    assert harness.ingest().code == 0
+    lines = harness.run("list").out.splitlines()
+    assert lines[0].split() == TABLE_HEADER
+    assert lines[1].endswith("2026-09-20 Standup")  # the latest Source, not the first
+    assert len(lines) == 2
+
+
+def test_json_sources_carry_the_meeting_title_and_date_fr13(seeded: Harness) -> None:
+    source = listing(seeded)[0]["sources"][0]
+    assert (source["title"], source["meeting_date"]) == ("Test meeting", "2026-09-30")
+    assert {"file", "path", "line", "raw_line", "checked"} <= source.keys()  # keys are only ever added (NFR-6)
+
+
+def test_long_task_is_truncated_with_an_ellipsis_to_the_terminal_width_fr13(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task = "write up " + "a very long description " * 10 + "END"
+    harness.ingest_note(f"- [ ] Karan to {task}\n", attendees="Karan Joshi")
+    monkeypatch.setenv("COLUMNS", "80")
+    lines = harness.run("list").out.splitlines()
+    assert all(len(line) <= 80 for line in lines)
+    assert "…" in lines[1] and "END" not in lines[1]
+    assert lines[1].rstrip().endswith("Test meeting")  # the right-hand columns survive
+    assert listing(harness)[0]["task"].endswith("END")  # --json is never truncated
+
+
+def test_wide_owner_column_of_a_team_item_still_fits_the_width_fr13(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    attendees = "Priya Nair, Rahul Mehta, Anita Desai, Sam Okafor, Meera Iyer, Karan Joshi"
+    harness.ingest_note("- [ ] Team to review the plan by 2026-10-20\n", attendees=attendees)
+    monkeypatch.setenv("COLUMNS", "100")
+    lines = harness.run("list").out.splitlines()
+    assert all(len(line) <= 100 for line in lines)
+    assert "Priya Nair" in lines[1] and "…" in lines[1]
+
+
+def test_width_falls_back_to_100_columns_when_undetectable_fr13(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_terminal(*_: object) -> None:
+        raise OSError
+
+    monkeypatch.delenv("COLUMNS", raising=False)
+    monkeypatch.setattr("os.get_terminal_size", no_terminal)
+    harness.ingest_note("- [ ] Karan to " + "x" * 200 + "\n", attendees="Karan Joshi")
+    lines = harness.run("list").out.splitlines()
+    assert max(len(line) for line in lines) == 100

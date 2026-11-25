@@ -120,6 +120,8 @@ class StoredSource:
     line_no: int
     raw_line: str
     checked: bool
+    title: str  # of the Source's Meeting Note
+    meeting_date: str  # ISO date of the Source's Meeting Note
 
 
 @dataclass(frozen=True)
@@ -267,14 +269,14 @@ class Store:
             conditions.append("due_date < :due_before")  # NULL (undated) never compares true
 
         sources: dict[int, list[StoredSource]] = {}
-        for item_id, path, line_no, raw_line, checked in self._conn.execute(
+        for item_id, path, line_no, raw_line, checked, title, meeting_date in self._conn.execute(
             """
-            SELECT s.item_id, s.note_path, s.line_no, s.raw_line, s.checked
+            SELECT s.item_id, s.note_path, s.line_no, s.raw_line, s.checked, n.title, n.meeting_date
             FROM sources s JOIN notes n ON n.path = s.note_path
             ORDER BY n.meeting_date, s.note_path, s.line_no
             """
         ):
-            sources.setdefault(item_id, []).append(StoredSource(path, line_no, raw_line, bool(checked)))
+            sources.setdefault(item_id, []).append(StoredSource(path, line_no, raw_line, bool(checked), title, meeting_date))
         persons: dict[int, list[str]] = {}
         for item_id, person in self._conn.execute("SELECT item_id, person FROM item_owners ORDER BY rowid"):
             persons.setdefault(item_id, []).append(person)
