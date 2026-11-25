@@ -64,7 +64,7 @@ def test_list_prints_a_table_of_items_fr13(harness: Harness) -> None:
     lines = result.out.splitlines()
     assert lines[0].split() == ["ID", "OWNER", "TASK", "DUE", "STATUS"]
     assert lines[1].split()[:2] == ["1", "Priya"]
-    assert lines[1].rstrip().endswith("Friday  open")
+    assert lines[1].rstrip().endswith("2026-10-02  open")  # Due Date once resolved (FR-8)
     assert lines[2].split()[:2] == ["2", "—"]
 
 

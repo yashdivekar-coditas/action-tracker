@@ -109,6 +109,13 @@ Resolve the Due Phrase against the note's Meeting Date (M). Weeks run Monday–S
 
 Any other phrase → no Due Date, but the Due Phrase is stored and reported as unresolved. The raw Due Phrase is always stored.
 
+- Precedence: explicit dates first, then `mid-<Month>`, `end of month`, `end of next week`, `next <weekday>`, `tomorrow`, `EOD`/`today`, and a bare weekday last.
+- Case and spacing are ignored, and leading `by`, `due` or `results due` and surrounding punctuation are stripped first. Weekdays and months are their full English names or three-letter abbreviations. Days may carry an ordinal (`3rd`).
+- `mid-<Month>` follows the same year rule as a date without a year.
+- Only ISO dates carry a year: `10 Sep 2027` is unresolved. A day the month doesn't have (`31 Sep`, `2026-02-30`) is unresolved, as is a date beyond year 9999.
+- Each unresolved Due Phrase appears in the ingest report as `file`, `line` and `due_phrase`, and on stderr as `Unresolved Due Phrase: <file>:<line>: <phrase>`.
+- The Due Date depends only on the Meeting Date and the Due Phrase, never on today. Re-ingest recomputes it.
+
 ### FR-9 Duplicates
 - Two occurrences are the same Action Item when they have the same resolved Owner set and the same task once both are lowercased, stripped of punctuation, stripped of `a`/`an`/`the`, and stripped of the Due Phrase. For Ambiguous or Unknown Owners the written name is used; Unassigned items compare on task alone.
 - A Duplicate adds a Source to the existing item, so it is one item with many Sources.

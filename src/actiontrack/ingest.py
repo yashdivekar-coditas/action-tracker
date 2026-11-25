@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from actiontrack import items, notes, store
+from actiontrack import dates, items, notes, store
 
 NOTE_SUFFIX = ".md"
 
@@ -56,7 +56,7 @@ class IngestReport:
     """The result of one ingest run.
 
     The `to_dict()` keys are a public `--json` contract: add keys, never rename them (NFR-6).
-    Item counts and the owner/due-phrase lists are filled by later specs.
+    Item counts and the owner lists are filled by later specs.
     """
 
     ignored: int = 0
@@ -114,8 +114,16 @@ def run(folder: Path, db_path: Path) -> IngestReport:
                 continue
             note_path = path.resolve()
             db.upsert_note(note_path, parsed.note)
+            meeting_date = parsed.note.meeting_date
             for occurrence in parsed.occurrences:
-                result = db.record_occurrence(note_path, occurrence, parsed.note.meeting_date)
+                due_date = None
+                if occurrence.due_phrase is not None:
+                    due_date = dates.resolve_due_phrase(occurrence.due_phrase, meeting_date)
+                    if due_date is None:  # kept as written, and reported so it can be rewritten
+                        report.unresolved_due_phrases.append(
+                            {"file": path.name, "line": occurrence.line_no, "due_phrase": occurrence.due_phrase}
+                        )
+                result = db.record_occurrence(note_path, occurrence, meeting_date, due_date)
                 report.items_new += result.new_item
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))

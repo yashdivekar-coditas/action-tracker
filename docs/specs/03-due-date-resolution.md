@@ -1,6 +1,6 @@
 # 03 — Due Dates: resolving Due Phrases against the Meeting Date
 
-Status: ready-for-agent
+Status: done
 Blocked by: 02
 Requirements: FR-8, FR-12 (unresolved Due Phrases), NFR-3
 
