@@ -79,7 +79,7 @@ Action-Tracker/
 | `ingest.py` | Run the folder: for each file, parse → extract → resolve → upsert, collecting the report. One transaction per run | FR-1, FR-9–12, NFR-2 |
 | `store.py` | Schema, migrations (`PRAGMA user_version`), upserts, merges, queries for list/done/followup, draft history | FR-9–11, FR-13–15 |
 | `followup.py` | Pick a Person's Open items, order them, render subject and plain-text body | FR-15–16 |
-| `gmail.py` | Start the configured stdio MCP server, `initialize`, confirm the draft tool exists, `call_tool(draft_tool, …)` once per draft | FR-17, NFR-1 |
+| `gmail.py` | Start the configured stdio MCP server, `initialize`, confirm the draft tool exists, `call_tool(draft_tool, …)` once per draft; map each result to a draft id (stored as returned) or a failure; part-way failures turn the remaining drafts into failures, so created drafts are never lost. The only module importing `mcp` (lazily) | FR-17, NFR-1, NFR-7 |
 
 ---
 
@@ -88,7 +88,7 @@ Action-Tracker/
 Persons are identified by full name (as written in Attendees or the roster). There is no Person table: known Persons are the distinct Attendees across ingested notes plus the roster.
 
 ```sql
--- PRAGMA user_version = 5 (the schema after all migrations in store.py)
+-- PRAGMA user_version = 6 (the schema after all migrations in store.py)
 CREATE TABLE notes (
   path          TEXT PRIMARY KEY,          -- absolute path
   title         TEXT NOT NULL,
@@ -139,8 +139,9 @@ CREATE TABLE drafts (                      -- follow-up history (FR-15)
   email          TEXT NOT NULL,
   gmail_draft_id TEXT,
   item_ids       TEXT NOT NULL,            -- JSON array
-  created_at     TEXT NOT NULL
+  created_at     TEXT NOT NULL             -- ISO UTC, e.g. 2026-10-15T09:30:00+00:00
 );
+CREATE INDEX drafts_person ON drafts (person, created_at);
 ```
 
 **Derived, not stored:** Overdue is `done_at IS NULL AND due_date < :today`, computed at query time (FR-13).
@@ -213,7 +214,7 @@ sequenceDiagram
     end
 ```
 
-`gmail.py` uses `mcp.ClientSession` over `mcp.client.stdio.stdio_client(StdioServerParameters(command=argv[0], args=argv[1:]))`. It is the only async code, wrapped in `asyncio.run` so the rest of the CLI stays synchronous.
+`gmail.py` uses `mcp.Client(StdioServerParameters(command=argv[0], args=argv[1:], env=dict(os.environ)), read_timeout_seconds=60)`, imported lazily inside its functions. It is the only async code, wrapped in `asyncio.run` behind the synchronous `create_drafts(command, draft_tool, emails) -> list[Outcome]`, so the rest of the CLI stays synchronous. A server that cannot start or lacks the tool raises `GmailError` (exit 1); a failing draft is an `Outcome(error=...)` and the others continue. `to` is sent as a list when the draft tool's `inputSchema` says `array`.
 
 ### 4.3 Error and exit-code paths
 
@@ -239,7 +240,7 @@ There are exactly two test seams (NFR-5):
 
 Tests are grouped by spec, one file per `docs/specs/NN-*.md`, and each test names the FR/NFR it proves. Rule tables (FR-7, FR-8) are parametrised tests that write a tiny note per row. `test_sample_notes.py` ingests `notes/` with `--today 2026-10-15` and asserts every row of FRD §6.
 
-`fake_gmail_server.py` is a tiny `mcp.server.fastmcp.FastMCP` stdio server. It exposes `create_draft` and a decoy `send_message`, and logs every call to a temp file the test reads.
+`fake_gmail_server.py` is a tiny `mcp.server.mcpserver.MCPServer` stdio server. It exposes `create_draft` and a decoy `send_message`, and logs every call to a temp file the test reads (the `fake_gmail` fixture in `conftest.py`, whose finaliser fails any test that logged `send_message`). Env switches make it fail for one recipient, omit `create_draft`, exit after N drafts (a server that dies mid-batch), make the database read-only (a history write that fails), or mimic the production server (list `to`, text-only results, `Error:` text failures).
 
 Run everything with `pytest`. No network or real credentials are needed.
 
@@ -256,7 +257,7 @@ pytest
 
 **Configure follow-ups** (only `followup` needs this):
 
-1. Choose a stdio Gmail MCP server and complete *its* Google OAuth setup (see open item in §8).
+1. Use the stdio Gmail MCP server `@artymclabin/gmail-mcp` (tool `draft_email`; see §6.1) and complete *its* Google OAuth setup.
 2. Copy `actiontrack.example.toml` to `actiontrack.toml` and fill in `sender`, `[gmail].command`, `[gmail].draft_tool`, and one `[[people]]` entry per Person with their email.
 
 **Use:**
@@ -270,6 +271,17 @@ actiontrack done 12
 actiontrack followup "Priya Nair" --dry-run    # preview
 actiontrack followup --all                     # creates Gmail drafts, sends nothing
 ```
+
+### 6.1 Production Gmail MCP server
+
+actiontrack is tested against the stdio server **`@artymclabin/gmail-mcp`** ([source](https://github.com/ArtyMcLabin/Gmail-MCP-Server), MIT, npm 1.2.4 released 2026-11-01). It is the maintained fork of the archived `GongRzhe/Gmail-MCP-Server`.
+
+- **Launch:** `command = ["npx", "-y", "@artymclabin/gmail-mcp"]`, `draft_tool = "draft_email"`.
+- **Auth (NFR-4):** owned by the server. Create a Google Cloud OAuth client (Desktop), save its JSON as `~/.gmail-mcp/gcp-oauth.keys.json`, then run `npx @artymclabin/gmail-mcp auth --scopes=gmail.compose` once. Tokens go to `~/.gmail-mcp/credentials.json`; actiontrack never sees them.
+- **Arguments:** `draft_email` takes `to`, `subject` and `body` (plain text). **`to` is a list of strings**, not a string, so the client must send `to: ["person@example.com"]`.
+- **Result:** plain text, no `structuredContent`: `Email draft created successfully with ID: <id>`. actiontrack stores the result text as returned (`gmail_draft_id` holds the whole sentence) and does not parse the id out of it.
+- **Errors:** a failed call comes back as ordinary text starting `Error: ` with `isError` unset, so a draft counts as created only when the success text carries an id.
+- **Note:** this server also exposes `send_email`, `send_draft` and `reply_all`; the NFR-1 allowlist in `gmail.py` is what keeps actiontrack from calling them.
 
 ---
 
@@ -294,7 +306,7 @@ The exact item counts and ids are determined by the implementation; the end-to-e
 
 | Risk | Impact | Mitigation / next step |
 |---|---|---|
-| Gmail MCP server not yet chosen; its create-draft argument names may differ from `to`/`subject`/`body` | `followup` can't run until resolved | Pick and test one server; add an argument mapping to `[gmail]` only if needed (FRD §8) |
+| The chosen Gmail MCP server (§6.1) takes `to` as a list and reports failures as plain text without `isError` | A string `to` is rejected; a failed draft looks like a normal result | Send `to` as a one-item list; accept a draft only when the result text carries an id |
 | Exact-after-normalising dedupe misses heavier rewording | The same commitment shows as two items | Accepted trade-off against false merges; spot-check `list` after ingest |
 | Owner-part heuristic (capitalised words before ` to `) | A task starting with a capitalised phrase could be misread as an owner, which then shows as Unknown | Unknown Owners are reported at ingest for a human to check |
 | Editing a note line after ingest creates a new occurrence; deleting a note doesn't remove its items | Stale items remain open | Mark them done with `done <id>`; a cleanup command is out of scope |

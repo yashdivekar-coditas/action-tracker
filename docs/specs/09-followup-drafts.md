@@ -1,6 +1,6 @@
 # 09 — `actiontrack followup`: Follow-up Drafts through the Gmail MCP server
 
-Status: ready-for-agent
+Status: done
 Blocked by: 04, 07
 Requirements: FR-15, FR-16, FR-17, NFR-1, NFR-4, NFR-5, ADR-0001
 

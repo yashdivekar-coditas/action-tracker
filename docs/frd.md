@@ -181,9 +181,14 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 - `--all`: one draft for every Person with at least one Open item.
 - Content: that Person's Open items, Overdue first, including shared and Team Items. Ambiguous, Unknown and Unassigned items are never included.
 - Skipped and reported (no draft, not an error): an Owner with no Open items, or one not in the roster or without an email.
-- `--dry-run`: print each email and create nothing.
-- Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, warn and still create it. Record the time of every draft created.
-- Exit `0` when every attempted draft succeeded; `1` if any failed (the others are still attempted and reported). A missing config, or an MCP server that won't start, is an error with a clear message.
+- `--dry-run`: print each email and create nothing; it needs no database and never creates one. Each email is `To:`, `Subject:`, a blank line and the body; emails are separated by a `---` line. Skips are printed as `Skipped <Person>: <reason>` (`no Open items` or `not in the People Roster`), then a closing `Dry run: N emails composed, M skipped. Nothing was created.` line.
+- Give exactly one of `<owner>` or `--all`; neither or both exits `2`. `unassigned` is not an `<owner>`, so it matches nobody and exits `2`.
+- Open items are selected with the same query as `list --status open --owner <Person>`, so the two never disagree.
+- `--all` visits Persons in alphabetical order of full name, so output is stable.
+- A config with no `sender` exits `2`.
+- Without `--dry-run`, each email is saved as a Gmail draft (FR-17) and nothing is sent. Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, print `warning: a draft for <Person> was already created at <ISO UTC time>` on stderr (before any draft is created) and still create it. Every draft that was created is recorded with its time (real UTC wall time, not `--today`); failed drafts and `--dry-run` record nothing. The `Created draft` lines are printed before anything is recorded, so a created draft is never unreported.
+- Summary (stdout), after one `Created draft for <Person> (<email>): <draft id>` line per draft: the `Skipped <Person>: <reason>` lines, then `Drafts: N created, M skipped, K failed. Nothing was sent.` Each failure is reported on stderr as `draft for <Person> failed: <why>`.
+- Exit `0` when every attempted draft succeeded (skips are not failures); `1` if any failed (the others are still attempted and reported). If the server dies or the transport fails part-way, the drafts already created are reported and recorded, and the rest are reported as failed. If the history cannot be written, the created drafts are still reported, with an error saying they were created but not recorded, and the exit code is `1`. A missing config is exit `2`. An MCP server that won't start, or that lacks the configured draft tool, is exit `1` with a clear message on stderr and no draft attempted. With nobody to draft for, the server is not started.
 
 ### FR-16 Email content
 Plain text (illustrative only, with today = 2026-10-23):
@@ -210,12 +215,17 @@ Thanks,
 <sender from config>
 ```
 
-- Due shows the Due Date, else the raw Due Phrase, else `no due date`.
-- Overdue items show days late.
+- Due shows the Due Date, else the raw Due Phrase, else `no due date`; the first two read `due <value>`.
+- Overdue items show days late: `(5 days overdue)`, or `(1 day overdue)`.
+- The subject counts every Open item (Overdue included) and the Overdue ones; the OVERDUE and OPEN sections are each left out when empty.
+- Items list the task only (the email is to the Owner, so no Owner column). Note text is shown with control characters escaped (NFR-4).
 - Every Source meeting is listed, joined in date order.
 
 ### FR-17 Gmail draft creation
-- actiontrack is an MCP client (ADR-0001). It starts the stdio Gmail MCP server given in config and calls **only** the configured create-draft tool, once per draft, with recipient, subject and body.
+- actiontrack is an MCP client (ADR-0001). It starts the stdio Gmail MCP server given in config (as an argument list, never a shell), initialises it, lists its tools, and calls **only** the configured create-draft tool, once per draft, with recipient, subject and body (`to`, `subject`, `body`).
+- `to` is the plain address, or a one-item list when the tool's input schema declares `to` as an array (the production server does).
+- The draft id is taken from the result's structured content (`id`) if present, else its text, and shown as returned. A result is a failure when the server flags an error or the text starts with `Error` (the production server reports some failures that way); the tool raising or timing out is a failure too.
+- Every wait on the server (start-up, each call) is bounded by a 60 second timeout, so a hung server fails the run (exit `1`) instead of hanging it.
 - It never calls any tool that sends, replies or forwards. See NFR-1.
 
 ---
@@ -229,8 +239,8 @@ Looked up as `--config`, then `./actiontrack.toml`, then `~/.config/actiontrack/
 sender = "Your Name"
 
 [gmail]
-command = ["npx", "-y", "<gmail-mcp-server>"]   # stdio MCP server launch command
-draft_tool = "create_draft"                     # the server's create-draft tool name
+command = ["npx", "-y", "@artymclabin/gmail-mcp"]   # stdio MCP server launch command
+draft_tool = "draft_email"                      # the server's create-draft tool name
 
 [[people]]
 name = "Priya Nair"

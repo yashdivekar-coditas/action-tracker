@@ -93,6 +93,20 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
           due_date      = (SELECT due_date FROM items WHERE items.id = sources.item_id)
         """,
     ),
+    (
+        # Follow-up history (FR-15); created_at is an ISO UTC timestamp.
+        """
+        CREATE TABLE drafts (
+          id             INTEGER PRIMARY KEY,
+          person         TEXT NOT NULL,   -- full name
+          email          TEXT NOT NULL,
+          gmail_draft_id TEXT,
+          item_ids       TEXT NOT NULL,   -- JSON array
+          created_at     TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX drafts_person ON drafts (person, created_at)",
+    ),
 )
 
 # NFR-4: meeting content stays private on a shared machine.
@@ -339,6 +353,18 @@ class Store:
         """Every Attendee full name across ingested notes, each once, in first-seen order."""
         rows = self._conn.execute("SELECT attendees FROM notes ORDER BY meeting_date, path").fetchall()
         return list(dict.fromkeys(name for (names,) in rows for name in json.loads(names)))
+
+    def latest_draft_at(self, person: str) -> datetime | None:
+        """When the latest follow-up draft for `person` was created (FR-15), or None."""
+        row = self._conn.execute("SELECT MAX(created_at) FROM drafts WHERE person = ?", (person,)).fetchone()
+        return datetime.fromisoformat(row[0]) if row[0] else None
+
+    def record_draft(self, person: str, email: str, gmail_draft_id: str | None, item_ids: list[int]) -> None:
+        """Record one created draft, stamped with the current UTC time (FR-15)."""
+        self._conn.execute(
+            "INSERT INTO drafts (person, email, gmail_draft_id, item_ids, created_at) VALUES (?, ?, ?, ?, ?)",
+            (person, email, gmail_draft_id, json.dumps(item_ids), datetime.now(timezone.utc).isoformat(timespec="seconds")),
+        )
 
     def _derive_item_fields(self, item_id: int) -> None:
         """Set the item's task, written owner, Due Phrase and Due Date from its Sources (FR-9).
