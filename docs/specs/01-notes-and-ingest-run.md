@@ -1,6 +1,6 @@
 # 01 — Notes: folder scan, note headers and Malformed Notes
 
-Status: ready-for-agent
+Status: done
 Blocked by: none
 Requirements: FR-1, FR-2, FR-3, FR-12, NFR-2, NFR-3, NFR-4, NFR-6, NFR-7, NFR-8
 
