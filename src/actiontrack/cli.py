@@ -235,7 +235,7 @@ def _warn_ingest_problems(report: ingest.IngestReport) -> None:
         print(f"Malformed Note: {_printable(entry.file)}: {_printable(entry.reason)}", file=sys.stderr)
     for entry in report.unresolved_due_phrases:
         print(
-            f"Unresolved Due Phrase: {_printable(entry['file'])}:{entry['line']}: {_printable(entry['due_phrase'])}",
+            f"Unresolved Due Phrase: {_printable(entry.file)}:{entry.line}: {_printable(entry.due_phrase)}",
             file=sys.stderr,
         )
 

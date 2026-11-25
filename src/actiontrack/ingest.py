@@ -7,6 +7,7 @@ failures abort the run, and `store.transaction` rolls everything back.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,15 @@ class ParsedNote:
 
     note: notes.Note
     occurrences: list[items.Occurrence]
+
+
+@dataclass(frozen=True)
+class UnresolvedDuePhrase:
+    """A Due Phrase no FR-8 rule matched, as shown in the report (FR-12)."""
+
+    file: str
+    line: int
+    due_phrase: str
 
 
 @dataclass(frozen=True)
@@ -68,7 +78,7 @@ class IngestReport:
     ambiguous_owners: list[dict[str, Any]] = field(default_factory=list)
     unknown_owners: list[dict[str, Any]] = field(default_factory=list)
     unassigned_items: list[dict[str, Any]] = field(default_factory=list)
-    unresolved_due_phrases: list[dict[str, Any]] = field(default_factory=list)
+    unresolved_due_phrases: list[UnresolvedDuePhrase] = field(default_factory=list)
 
     @property
     def notes_read(self) -> int:
@@ -91,7 +101,9 @@ class IngestReport:
             "ambiguous_owners": self.ambiguous_owners,
             "unknown_owners": self.unknown_owners,
             "unassigned_items": self.unassigned_items,
-            "unresolved_due_phrases": self.unresolved_due_phrases,
+            "unresolved_due_phrases": [
+                {"file": u.file, "line": u.line, "due_phrase": u.due_phrase} for u in self.unresolved_due_phrases
+            ],
         }
 
 
@@ -116,18 +128,22 @@ def run(folder: Path, db_path: Path) -> IngestReport:
             db.upsert_note(note_path, parsed.note)
             meeting_date = parsed.note.meeting_date
             for occurrence in parsed.occurrences:
-                due_date = None
-                if occurrence.due_phrase is not None:
-                    due_date = dates.resolve_due_phrase(occurrence.due_phrase, meeting_date)
-                    if due_date is None:  # kept as written, and reported so it can be rewritten
-                        report.unresolved_due_phrases.append(
-                            {"file": path.name, "line": occurrence.line_no, "due_phrase": occurrence.due_phrase}
-                        )
+                due_date = _resolve_due(occurrence, meeting_date, path.name, report)
                 result = db.record_occurrence(note_path, occurrence, meeting_date, due_date)
                 report.items_new += result.new_item
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))
     return report
+
+
+def _resolve_due(occurrence: items.Occurrence, meeting_date: date, file: str, report: IngestReport) -> date | None:
+    """The occurrence's Due Date (FR-8); an unresolved Due Phrase is kept and reported (FR-12)."""
+    if occurrence.due_phrase is None:
+        return None
+    due_date = dates.resolve_due_phrase(occurrence.due_phrase, meeting_date)
+    if due_date is None:
+        report.unresolved_due_phrases.append(UnresolvedDuePhrase(file, occurrence.line_no, occurrence.due_phrase))
+    return due_date
 
 
 def _scan(folder: Path, skip: Path) -> list[Path]:

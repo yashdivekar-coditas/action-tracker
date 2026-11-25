@@ -67,6 +67,8 @@ RULES = [
     ("2026-12-10", "by 5 Jan", "2027-01-05"),
     ("2026-09-30", "by 30 Sep", "2026-09-30"),
     ("2026-09-30", "by 29 Sep", "2027-09-29"),
+    ("2027-12-20", "by 29 Feb", "2028-02-29"),  # rolls into a leap year
+    ("2026-09-30", ", due by 15 October", "2026-10-15"),  # leading words stripped repeatedly
     # case and spacing make no difference
     ("2026-09-01", "BY   FRIDAY", "2026-09-04"),
     ("2026-09-30", "by  OCT   5TH", "2026-10-05"),
@@ -90,6 +92,8 @@ def test_due_phrase_resolves_against_meeting_date_fr8(
         ("by 2026-02-30", "2026-02-30"),
         ("by 10 Sep 2027", "10 Sep 2027"),  # only ISO carries a year
         ("by end of the quarter", "end of the quarter"),
+        ("by 29 Feb", "29 Feb"),  # 2026 has no 29 February and it isn't before M
+        ("by midOctober", "midOctober"),
     ],
 )
 def test_unresolved_due_phrase_keeps_raw_text_and_is_reported_fr8_fr12(

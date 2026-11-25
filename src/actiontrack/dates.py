@@ -65,7 +65,7 @@ _DUE_TRIM = " \t,;:.!?—–-"
 _ORDINAL = r"(\d{1,2})(?:st|nd|rd|th)?"
 _DAY_MONTH = re.compile(rf"{_ORDINAL} ([a-z]+)")
 _MONTH_DAY = re.compile(rf"([a-z]+) {_ORDINAL}")
-_MID_MONTH = re.compile(r"mid[- ]?([a-z]+)")
+_MID_MONTH = re.compile(r"mid[- ]([a-z]+)")
 _NEXT_WEEKDAY = re.compile(r"next ([a-z]+)")
 
 
@@ -117,5 +117,5 @@ def _without_year(month: int | None, day: int, m: date) -> date | None:
     """A date written without a year: M's year, or the next year if that date is before M."""
     if month is None:
         return None
-    due = date(m.year, month, day)  # raises for a day the month doesn't have
-    return due if due >= m else due.replace(year=m.year + 1)
+    year = m.year if (month, day) >= (m.month, m.day) else m.year + 1
+    return date(year, month, day)  # raises for a day that year doesn't have

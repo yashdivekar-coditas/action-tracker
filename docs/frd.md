@@ -112,7 +112,7 @@ Any other phrase → no Due Date, but the Due Phrase is stored and reported as u
 - Precedence: explicit dates first, then `mid-<Month>`, `end of month`, `end of next week`, `next <weekday>`, `tomorrow`, `EOD`/`today`, and a bare weekday last.
 - Case and spacing are ignored, and leading `by`, `due` or `results due` and surrounding punctuation are stripped first. Weekdays and months are their full English names or three-letter abbreviations. Days may carry an ordinal (`3rd`).
 - `mid-<Month>` follows the same year rule as a date without a year.
-- Only ISO dates carry a year: `10 Sep 2027` is unresolved. A day the month doesn't have (`31 Sep`, `2026-02-30`) is unresolved, as is a date beyond year 9999.
+- Only ISO dates carry a year: `10 Sep 2027` is unresolved. The year rule compares month and day with M, so `29 Feb` said in December 2027 is 2028-02-29. A day that doesn't exist in the chosen year (`31 Sep`, `2026-02-30`, `29 Feb` said in March 2026) is unresolved, as is a date beyond year 9999.
 - Each unresolved Due Phrase appears in the ingest report as `file`, `line` and `due_phrase`, and on stderr as `Unresolved Due Phrase: <file>:<line>: <phrase>`.
 - The Due Date depends only on the Meeting Date and the Due Phrase, never on today. Re-ingest recomputes it.
 

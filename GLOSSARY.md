@@ -70,6 +70,9 @@ The deadline as written in the note, without its leading "by" or "due" ("Friday"
 The calendar date a Due Phrase resolves to, relative to the Meeting Date; absent when the phrase is missing or unresolvable.
 _Avoid_: Deadline
 
+**Unresolved Due Phrase**:
+A Due Phrase that matches no Due Date rule; the item keeps the phrase as written, has no Due Date, and the phrase is listed in the ingest report.
+
 ## Follow-ups
 
 **Follow-up Draft**:
