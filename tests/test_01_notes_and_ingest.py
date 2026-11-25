@@ -412,3 +412,17 @@ def test_unclosed_front_matter_falls_back_to_template_header_fr2_nfr2(harness: H
     note = ingested_note(harness, "n.md", content)
 
     assert (note["title"], note["meeting_date"]) == ("Foo", "2026-09-01")
+
+
+def test_database_from_a_newer_actiontrack_is_refused_nfr2(harness: Harness) -> None:
+    harness.write("a.md", TEMPLATE_NOTE)
+    # Setup only: stand in for a database written by a future schema version.
+    with sqlite3.connect(harness.db) as conn:
+        conn.execute("PRAGMA user_version = 99")
+    before = harness.db.read_bytes()
+
+    result = harness.ingest()
+
+    assert result.code == 1
+    assert "created by a newer actiontrack (schema 99" in result.err
+    assert harness.db.read_bytes() == before

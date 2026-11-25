@@ -11,7 +11,7 @@ import json
 import os
 import sqlite3
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -103,6 +103,10 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     version: int = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version > len(_MIGRATIONS):
+        raise sqlite3.DatabaseError(
+            f"created by a newer actiontrack (schema {version}, this version knows {len(_MIGRATIONS)})"
+        )
     for target, statements in enumerate(_MIGRATIONS[version:], start=version + 1):
         for statement in statements:
             conn.execute(statement)
@@ -110,5 +114,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 
 def _rollback(conn: sqlite3.Connection) -> None:
-    if conn.in_transaction:
-        conn.execute("ROLLBACK")
+    # A failed ROLLBACK must not mask the original error; SQLite discards the
+    # uncommitted transaction anyway when the connection closes.
+    with suppress(sqlite3.Error):
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
