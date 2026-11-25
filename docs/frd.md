@@ -150,10 +150,10 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 ### FR-13 `actiontrack list`
 - With no filters: Open items only (Overdue included).
 - Columns: id, Owner(s), task, due (Due Date, else raw Due Phrase, else `—`), status (`open`, `overdue (Nd)`, `done`), latest Source meeting date and title (`MEETING` column).
-- The table fits the terminal width (100 columns when it can't be detected): the Owner, task and meeting cells are truncated with `…`, widest first. `--json` is never truncated.
+- The table fits the terminal width (100 columns when it can't be detected): the Owner, task and meeting cells are truncated with `…`, widest first, but each keeps at least 10 characters, so a very narrow terminal can still overflow. `--json` is never truncated.
 - Order: Overdue (most late first), then dated items by Due Date, then undated items last; ties by id. With `--all`, Done items sort among the rest by Due Date.
 - Filters, combined with AND:
-  - `--owner <name>`: full name, alias, or a first name unique among known Persons (all Attendees plus the roster); also `unassigned`. Tried in that order: exact full name, then alias, then first name. A name matching several Persons, or none, is an error (exit `2`) listing the candidates. `--owner` never selects Ambiguous or Unknown items. A shared or Team Item matches each of its Owners.
+  - `--owner <name>`: full name, alias, or a first name unique among known Persons (all Attendees plus the roster); also `unassigned` (case-insensitive). Tried in that order: exact full name, then alias, then first name. A name matching several Persons, or none, is an error (exit `2`) listing the candidates; this holds with no database too, where the known Persons are the roster only. `--owner` never selects Ambiguous or Unknown items. A shared or Team Item matches each of its Owners.
   - `--status open|done|overdue`: `open` = not Done (includes Overdue); `overdue` = Open with a Due Date before today; `done` = Done.
   - `--due-before <YYYY-MM-DD>`: Due Date strictly before that date; undated items excluded.
   - `--all`: every status; it overrides `--status`.
