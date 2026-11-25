@@ -27,6 +27,22 @@ class MalformedNote:
     reason: str
 
 
+@dataclass(frozen=True)
+class IngestedNote:
+    """A Meeting Note read this run, with the header it was stored with."""
+
+    file: str
+    note: notes.Note
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "file": self.file,
+            "title": self.note.title,
+            "meeting_date": self.note.meeting_date.isoformat(),
+            "attendees": list(self.note.attendees),
+        }
+
+
 @dataclass
 class IngestReport:
     """The result of one ingest run.
@@ -35,16 +51,20 @@ class IngestReport:
     Item counts and the owner/due-phrase lists are filled by later specs.
     """
 
-    notes_read: int = 0
     ignored: int = 0
     items_new: int = 0
     items_merged: int = 0
     items_done: int = 0
+    ingested_notes: list[IngestedNote] = field(default_factory=list)
     malformed_notes: list[MalformedNote] = field(default_factory=list)
     ambiguous_owners: list[dict[str, Any]] = field(default_factory=list)
     unknown_owners: list[dict[str, Any]] = field(default_factory=list)
     unassigned_items: list[dict[str, Any]] = field(default_factory=list)
     unresolved_due_phrases: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def notes_read(self) -> int:
+        return len(self.ingested_notes)
 
     @property
     def malformed(self) -> int:
@@ -58,6 +78,7 @@ class IngestReport:
             "items_new": self.items_new,
             "items_merged": self.items_merged,
             "items_done": self.items_done,
+            "notes": [n.to_dict() for n in self.ingested_notes],
             "malformed_notes": [{"file": m.file, "reason": m.reason} for m in self.malformed_notes],
             "ambiguous_owners": self.ambiguous_owners,
             "unknown_owners": self.unknown_owners,
@@ -84,7 +105,7 @@ def run(folder: Path, db_path: Path) -> IngestReport:
                 report.malformed_notes.append(MalformedNote(path.name, parsed.reason))
                 continue
             db.upsert_note(path.resolve(), parsed)
-            report.notes_read += 1
+            report.ingested_notes.append(IngestedNote(path.name, parsed))
     return report
 
 

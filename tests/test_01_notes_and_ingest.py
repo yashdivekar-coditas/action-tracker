@@ -5,6 +5,8 @@ Each test names the FR/NFR rule it proves.
 
 from __future__ import annotations
 
+import pytest
+
 from conftest import Harness
 
 TEMPLATE_NOTE = """\
@@ -65,6 +67,7 @@ REPORT_KEYS = {
     "items_new",
     "items_merged",
     "items_done",
+    "notes",
     "malformed_notes",
     "ambiguous_owners",
     "unknown_owners",
@@ -139,3 +142,85 @@ def test_database_file_is_readable_by_owner_only_nfr4(harness: Harness) -> None:
     assert harness.ingest().code == 0
 
     assert harness.db.stat().st_mode & 0o777 == 0o600
+
+
+# --- note headers (FR-2, NFR-8) --------------------------------------------------
+
+
+def ingested_note(harness: Harness, name: str, content: str | bytes) -> dict:
+    """Write one note, ingest the folder and return that note's entry from the report."""
+    harness.write(name, content)
+    result = harness.ingest()
+    assert result.code == 0, result.err
+    (entry,) = [n for n in result.json["notes"] if n["file"] == name]
+    return entry
+
+
+def test_template_header_gives_title_date_and_attendees_fr2(harness: Harness) -> None:
+    note = ingested_note(harness, "kickoff.md", TEMPLATE_NOTE)
+
+    assert note == {
+        "file": "kickoff.md",
+        "title": "Quote portal kickoff",
+        "meeting_date": "2026-09-01",
+        "attendees": ["Priya Nair", "Rahul Mehta"],
+    }
+
+
+def test_yaml_front_matter_header_fr2(harness: Harness) -> None:
+    content = "---\ntitle: Team standup\ndate: 2026-09-16\nattendees: [Anita Desai, Lena Fischer, Meera Iyer]\n---\n\n## Notes\n"
+
+    note = ingested_note(harness, "standup.md", content)
+
+    assert (note["title"], note["meeting_date"]) == ("Team standup", "2026-09-16")
+    assert note["attendees"] == ["Anita Desai", "Lena Fischer", "Meera Iyer"]
+
+
+def test_yaml_front_matter_accepts_quoted_values_fr2(harness: Harness) -> None:
+    content = "---\ntitle: \"Retro: Q3\"\ndate: '2026-09-16'\nattendees: Anita Desai, Lena Fischer\n---\n"
+
+    note = ingested_note(harness, "retro.md", content)
+
+    assert (note["title"], note["meeting_date"]) == ("Retro: Q3", "2026-09-16")
+    assert note["attendees"] == ["Anita Desai", "Lena Fischer"]
+
+
+@pytest.mark.parametrize(
+    "written",
+    ["2026-09-09", "9 September 2026", "9 Sep 2026", "Wednesday, 9 September 2026", "09 sep 2026"],
+)
+def test_meeting_date_formats_fr2(harness: Harness, written: str) -> None:
+    note = ingested_note(harness, "n.md", f"# Meeting: X\nDate: {written}\n")
+
+    assert note["meeting_date"] == "2026-09-09"
+
+
+def test_title_falls_back_to_file_name_fr2(harness: Harness) -> None:
+    note = ingested_note(harness, "2026-09-23-standup.md", "Date: 2026-09-23\nAttendees: Sam Okafor\n")
+
+    assert note["title"] == "2026-09-23-standup"
+
+
+def test_plain_heading_is_the_title_when_no_meeting_line_fr2(harness: Harness) -> None:
+    note = ingested_note(harness, "n.md", "# Design review\ndate: 2026-09-18\n")
+
+    assert note["title"] == "Design review"
+
+
+def test_note_without_attendees_is_still_ingested_fr2(harness: Harness) -> None:
+    note = ingested_note(harness, "n.md", "# Meeting: Standup\nDate: 2026-09-23\n\n## Discussion\n")
+
+    assert note["attendees"] == []
+
+
+def test_header_lines_are_case_insensitive_and_attendees_trimmed_fr2(harness: Harness) -> None:
+    note = ingested_note(harness, "n.md", "# meeting:  Sync \nDATE: 2026-09-23\nattendees:  Sam Okafor ,Karan Joshi,\n")
+
+    assert note["title"] == "Sync"
+    assert note["attendees"] == ["Sam Okafor", "Karan Joshi"]
+
+
+def test_utf8_byte_order_mark_is_accepted_nfr8(harness: Harness) -> None:
+    note = ingested_note(harness, "bom.md", b"\xef\xbb\xbf" + TEMPLATE_NOTE.encode("utf-8"))
+
+    assert note["title"] == "Quote portal kickoff"
