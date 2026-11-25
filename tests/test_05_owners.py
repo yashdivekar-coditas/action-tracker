@@ -93,3 +93,33 @@ def test_table_and_action_line_owners_use_the_same_rules_fr7(harness: Harness) -
         ("person", ["Anita Desai"], []),
         ("person", ["Priya Nair"], []),
     ]
+
+
+# --- placeholders (FR-7 steps 2 and 3) ---------------------------------------------
+
+
+@pytest.mark.parametrize("word", ["Team", "Everyone", "All"])
+def test_team_words_make_a_team_item_owned_by_every_attendee_fr7_step2(harness: Harness, word: str) -> None:
+    item = resolve(harness, f"{word} to decide on the launch date", attendees="Priya Nair, Rahul Mehta, Sam Okafor")
+
+    assert owner(item) == ("team", ["Priya Nair", "Rahul Mehta", "Sam Okafor"], [])
+    assert item["written_owner"] == word
+
+
+def test_team_item_without_attendees_is_unassigned_fr7_step2(harness: Harness) -> None:
+    assert owner(resolve(harness, "Team to decide on the launch date", attendees=None)) == ("unassigned", [], [])
+
+
+@pytest.mark.parametrize("word", ["TBD", "Someone", "Somebody", "Anyone", "?"])
+def test_placeholder_words_are_unassigned_fr7_step3(harness: Harness, word: str) -> None:
+    item = resolve(harness, f"{word} to write the changelog")
+
+    assert owner(item) == ("unassigned", [], [])
+    assert item["written_owner"] == word
+
+
+def test_no_owner_part_is_unassigned_fr7_step3(harness: Harness) -> None:
+    item = resolve(harness, "Book the venue")
+
+    assert owner(item) == ("unassigned", [], [])
+    assert item["written_owner"] is None

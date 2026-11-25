@@ -32,6 +32,8 @@ class Resolution:
 # FR-7 step 1: names joined by `&`, `,` or `and` are separate Owners of one shared item.
 _JOINERS = re.compile(r"\s*(?:&|,|\band\b)\s*", re.IGNORECASE)
 _INITIAL = re.compile(r"^(?P<letter>\w)\.$")
+_TEAM_WORDS = frozenset({"team", "everyone", "all"})  # FR-7 step 2
+_UNASSIGNED_WORDS = frozenset({"tbd", "someone", "somebody", "anyone", "?"})  # FR-7 step 3
 
 
 def resolve(owner_part: str | None, attendees: Sequence[str]) -> Resolution:
@@ -43,7 +45,15 @@ def resolve(owner_part: str | None, attendees: Sequence[str]) -> Resolution:
     persons: list[str] = []
     candidates: list[str] = []
     unknown = False
+    team = False
     for name in names:
+        word = name.strip().casefold()
+        if word in _TEAM_WORDS:
+            team = True
+            persons.extend(attendees)  # no Attendees: nobody, so the item ends up Unassigned
+            continue
+        if word in _UNASSIGNED_WORDS:
+            continue
         matches = _matching(name, attendees)
         if len(matches) == 1:
             persons.append(matches[0])
@@ -57,7 +67,10 @@ def resolve(owner_part: str | None, attendees: Sequence[str]) -> Resolution:
         return Resolution(OwnerKind.AMBIGUOUS, candidates=_unique(candidates))
     if unknown:
         return Resolution(OwnerKind.UNKNOWN)
-    return Resolution(OwnerKind.PERSON, persons=_unique(persons))
+    if not persons:
+        return Resolution(OwnerKind.UNASSIGNED)
+    only_team = team and len(names) == 1
+    return Resolution(OwnerKind.TEAM if only_team else OwnerKind.PERSON, persons=_unique(persons))
 
 
 def _matching(name: str, people: Sequence[str]) -> list[str]:
