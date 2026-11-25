@@ -347,3 +347,16 @@ def test_an_overlapping_folder_adds_only_the_new_occurrences_fr11(harness: Harne
     after = harness.items()
     assert [i["id"] for i in after] == [1, 2, 3]
     assert [(i["id"], i["task"]) for i in after[:2]] == [(i["id"], i["task"]) for i in before]
+
+
+def test_an_owner_report_names_the_surviving_id_after_a_later_merge_fr12_fr11(harness: Harness) -> None:
+    note(harness, "c.md", "2026-09-08", f"- [ ] {INVOICES}", attendees="Karan Rao")  # a Person: item 1
+    ingest(harness)
+    note(harness, "a.md", "2026-09-01", f"- [ ] {INVOICES}", attendees="Priya Nair")  # Unknown: item 2
+    ingest(harness)
+    note(harness, "c.md", "2026-09-08", f"- [ ] {INVOICES}", attendees="Priya Nair")  # now Unknown too: merges into 1
+
+    report = ingest(harness)
+
+    assert [i["id"] for i in harness.items()] == [1]
+    assert [(u["file"], u["item_id"]) for u in report["unknown_owners"]] == [("a.md", 1), ("c.md", 1)]

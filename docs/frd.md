@@ -136,7 +136,7 @@ Any other phrase → no Due Date, but the Due Phrase is stored and reported as u
 
 ### FR-12 Ingest report and exit codes
 After every run, print:
-- counts: notes read, notes skipped as Malformed, files ignored, items new, items merged as Duplicates, items newly Done;
+- counts: notes read, notes skipped as Malformed, files ignored, items new, items merged (repeats attached as Duplicates, FR-9, and items merged by a correction, FR-11), items newly Done;
 - each Malformed Note with its reason (FR-3);
 - each Ambiguous Owner (written name, candidates, note), Unknown Owner, and Unassigned item;
 - each unresolved Due Phrase.

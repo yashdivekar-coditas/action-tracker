@@ -88,7 +88,7 @@ Action-Tracker/
 Persons are identified by full name (as written in Attendees or the roster). There is no Person table: known Persons are the distinct Attendees across ingested notes plus the roster.
 
 ```sql
--- PRAGMA user_version = 1
+-- PRAGMA user_version = 5 (the schema after all migrations in store.py)
 CREATE TABLE notes (
   path          TEXT PRIMARY KEY,          -- absolute path
   title         TEXT NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE notes (
 CREATE TABLE items (
   id            INTEGER PRIMARY KEY,       -- stable, never reused (FR-11)
   task          TEXT NOT NULL,             -- derived: task text from the latest Source
-  dedupe_key    TEXT NOT NULL,             -- owners + normalised task (FR-9)
+  dedupe_key    TEXT,                      -- owners + normalised task (FR-9); NULL only for rows from before spec 06, set on their next ingest
   owner_kind    TEXT NOT NULL CHECK (owner_kind IN
                   ('person','team','ambiguous','unknown','unassigned')),
   written_owner TEXT,                      -- as written, e.g. 'Priya'
