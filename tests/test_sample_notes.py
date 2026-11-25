@@ -100,3 +100,30 @@ def test_sample_owner_resolution_fr7(harness: Harness) -> None:
     assert owner_of("2026-09-30-q4-offsite.md", "prepare the architecture") == (
         "ambiguous", [], ["Rahul Mehta", "Rahul Verma"],
     )  # fmt: skip
+
+
+def test_sample_repeats_collapse_fr9_fr10_fr11(harness: Harness) -> None:
+    harness.ingest(SAMPLE_NOTES)
+    items = harness.items()
+
+    def only(task_part: str) -> dict:
+        (item,) = [i for i in items if task_part in i["task"]]
+        return item
+
+    def files(item: dict) -> list[str]:
+        return [s["file"][:10] for s in item["sources"]]
+
+    quote = only("revised quote to Acme")
+    assert (files(quote), quote["due_date"], quote["status"]) == (
+        ["2026-09-01", "2026-09-08", "2026-09-15"], "2026-09-11", "done",
+    )  # fmt: skip
+
+    sso = only("estimate SSO work")
+    assert (sso["persons"], sso["due_date"], sso["status"]) == (["Rahul Verma"], "2026-09-28", "open")
+
+    cloud = only("approve the Q4 cloud spend")
+    assert (cloud["status"], [s["checked"] for s in cloud["sources"]]) == ("done", [False, True])
+    assert cloud["sources"][1]["file"].startswith("2026-10-02")
+
+    freeze = only("freeze invoice edits from 9 Oct")
+    assert (len(freeze["sources"]), freeze["due_date"]) == (2, None)
