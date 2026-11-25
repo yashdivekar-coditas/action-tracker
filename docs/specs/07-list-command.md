@@ -1,6 +1,6 @@
 # 07 — `actiontrack list`: filters, Overdue and ordering
 
-Status: ready-for-agent
+Status: done
 Blocked by: 06
 Requirements: FR-13, NFR-3, NFR-6
 
