@@ -68,8 +68,9 @@ def test_list_prints_a_table_of_items_fr13(harness: Harness) -> None:
     assert lines[2].split()[:2] == ["2", "—"]
 
 
-def test_list_on_a_new_database_is_empty_fr13(harness: Harness) -> None:
+def test_list_without_a_database_is_empty_and_creates_nothing_fr13(harness: Harness) -> None:
     assert harness.items() == []
+    assert not harness.db.exists()
 
 
 # --- other shapes and status (FR-4, FR-10) -----------------------------------------

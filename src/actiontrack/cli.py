@@ -151,9 +151,11 @@ def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
 
 
 def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
+    stored: list[store.StoredItem] = []
     try:
-        with store.transaction(options.db) as db:
-            stored = db.list_items()
+        if options.db.exists():  # a read must not leave a new, empty database behind
+            with store.transaction(options.db) as db:
+                stored = db.list_items()
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
