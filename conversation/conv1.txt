@@ -1,0 +1,1188 @@
+ ▐▛███▛█   Claude Code v2.1.332
+▝▜██████▀  Opus 5.5 · Claude Team
+ ▝▝   ▝▝   ~/Desktop/Personal/Ai Session/Action-Tracker
+
+
+⏺ ponytail: its classic.UserPromptSubmit hook was skipped. 
+  "cc-plugin-sec-default" runs first and sent the event on past it.
+
+❯ Hey we are here to build a solution for teh following problem statement:      
+  Scenario                                                                      
+                                                                                
+                                                                                
+  Your team's meeting notes pile up as markdown files. Action items get lost,   
+  and follow-up emails are written late or not at all. You will build a small   
+  CLI tool, actiontrack, that reads meeting notes, tracks the action items, and 
+  drafts follow-up emails for review.                                           
+                                                                                
+                                                                                
+  What you build                                                                
+                                                                                
+                                                                                
+  A CLI with four commands:                                                     
+                                                                                
+                                                                                
+  1. actiontrack ingest <folder> parses every .md meeting note in the folder.   
+  Each note has                                                                 
+     a date, attendees and free- appear as lines like - [ ]Priya to send the    
+  revised quote by Friday. The tool stores them with owner, task, due           
+     date (resolved to a real daurce file and status.                           
+  2. actiontrack list shows items. Filters: --owner, --status                   
+  open|done|overdue,                                                            
+     --due-before <date>. Overdu                                                
+  3. actiontrack done <id> marks an item as done.                               
+  4. actiontrack followup <ownerper owner covering their openand overdue items, 
+  and creates a Gmail draft through the Gmail MCP connector. It never sends.    
+                                                                                
+                                                                                
+  Edge cases the tool must handl                                                
+  Duplicate items repeated across several meetings.                             
+  Items with no owner or no da                                                  
+  Two people with the same first name.                                          
+  Malformed notes (skip them and report, don't crash).                          
+  A sample notes/ folder with 30+ files is provided. Several are long and       
+  messy, and a few are deliberately malformed.                                  
+                                                                                
+  Lets start some brain stromming on the topic to build requirement document    
+  with functional requirement document, non-functional requirmewnt document.    
+  Lets start teh brain stromming using /mattpocock-skills:grill-with-docs       
+
+⏺ Skill(mattpocock-skills:grill-with-docs)
+  ⎿  Loaded skill
+
+⏺ Skill(mattpocock-skills:grilling)
+  ⎿  Loaded skill
+
+⏺ Skill(mattpocock-skills:domain-modeling)
+  ⎿  Loaded skill
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Surveyed the 36 sample notes; checking the odd ones (table format, .txt,
+  scratch/untitled) before the first question round.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 1, Q1 — I found a complete earlier attempt at this exact problem in
+     ../assesment/ (Python package, spec.md with user stories, 11 issues, 3 
+     ADRs: Gmail drafts via `claude -p`, fuzzy duplicate merge, owner 
+     groups/ambiguous owners). Should this brainstorm start from a clean slate, 
+     using that work only as a reference I can quote when it helps? → Ignore it 
+     completely
+     · Round 1, Q2 — Where and how should the requirements live? The parent 
+     repo's GLOSSARY.md and docs/adr/ belong to the unrelated Gatepass project, 
+     so I'd keep actiontrack self-contained inside Action-Tracker/. → 
+     Action-Tracker/ local (Recommended)
+     · Round 1, Q3 — Which language/runtime should the requirements assume for 
+     the CLI? → Python 3.11+ stdlib (Recommended)
+     · Round 1, Q4 — A standalone CLI can't call the claude.ai Gmail connector 
+     directly (that connector only exists inside a Claude session). How should 
+     `followup` create the Gmail draft 'through the Gmail MCP connector'? → CLI 
+     is an MCP client
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Writing the first ADR (Gmail via an MCP client — hard to reverse, real
+  trade-off), then round 2.
+
+⏺ Write(docs/adr/0001-followup-drafts-via-own-mcp-client.md)
+  ⎿  Wrote 8 lines to docs/adr/0001-followup-drafts-via-own-mcp-client.md
+      1 # Follow-up drafts go through the CLI's own MCP client
+      2 
+      3 `followup` must create Gmail drafts "through the Gmail MCP connec
+        tor", but the claude.ai Gmail connector only exists inside a Clau
+        de session and a standalone CLI cannot reach it. We considered sh
+        elling out to `claude -p` with only `create_draft` allowed, and h
+        aving the CLI emit draft files for a human to push through Claude
+         Code. We chose to make actiontrack itself an MCP client that tal
+        ks to a configurable Gmail MCP server, so the command creates the
+         draft on its own without depending on Claude Code being installe
+     … +6 lines (ctrl+o to expand)
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 2, Q5 — Given actiontrack is its own MCP client (ADR-0001 written),
+     which Gmail MCP server and transport should the requirements target? → 
+     Configurable stdio server (Recommended)
+     · Round 2, Q6 — Python stdlib was chosen, but speaking MCP correctly 
+     (initialize handshake, tools/call, JSON-RPC framing) is easiest with the 
+     official `mcp` Python SDK. Allow that as the single runtime dependency? → 
+     Allow `mcp` SDK only (Recommended)
+     · Round 2, Q7 — Notes only contain names (e.g. 'Priya Nair'), never emails.
+     Where does a follow-up recipient's email address come from? → People 
+     roster file (Recommended)
+     · Round 2, Q8 — Two Priyas (Nair, Shah) and two Rahuls (Mehta, Verma) 
+     exist. I found 5 items where a bare first name is used while BOTH namesakes
+     attended (e.g. 2026-10-08 'Priya to circulate the go/no-go summary'). 
+     Rule: resolve a first name or 'Priya N.' against that meeting's attendees; 
+     if still more than one match, keep the item as Ambiguous Owner, report it 
+     at ingest, and exclude it from follow-ups. OK? → Attendees, else Ambiguous 
+     (Recommended)
+
+⏺ Write(GLOSSARY.md)
+  ⎿  Wrote 29 lines to GLOSSARY.md
+      1 # Actiontrack
+      2 
+      3 Turns a folder of meeting notes into tracked action items and dra
+        fts follow-up emails to their owners for a human to review and se
+        nd.
+      4 
+      5 ## People
+      6 
+      7 **Person**:
+      8 Someone listed in the People Roster with a full name and an email
+     … +22 lines (ctrl+o to expand)
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 2, Q9 — Notes use many action-item shapes: `- [ ]`/`- [x]`/`[X]`, 
+     `*` and `+` bullets, nested sub-items, a markdown table `| Owner | Action |
+     Due |`, `ACTION: Karan to ...` lines, and `@anita: ...`. Quoted lines (`> 
+     - [ ] Karan to refund...`) are explicitly NOT agreed actions. Which shapes 
+     count as action items? → Checkbox lists + table + ACTION: (Recommended)
+     · Round 2, Q10 — Some items have no real owner: 'Team to decide...', 'TBD 
+     to write...', 'Someone to update...', 'Book the venue' (no name at all), 
+     and one has two: 'Anita & Rahul to agree on the component API'. How should 
+     these be stored? → if defiened as team then all are added, if specific 
+     people name is said then add then both and is missing info then keep it 
+     unassiggned 
+     · Round 2, Q11 — Which notes count as Malformed (skipped entirely and 
+     listed in the ingest report, never partly ingested)? Sample has: a 
+     binary/PNG file named scratch.md, an empty .md, untitled.md with items but 
+     no header/date/attendees, a note with `Date: sometime last week`, and a 
+     .txt offsite draft. Two notes use YAML front-matter instead of `Date:` 
+     lines (those are valid). → No usable meeting date = malformed (Recommended)
+     · Round 2, Q12 — Due phrases are resolved against the note's meeting date. 
+     Proposed rules: 'by Friday' = the next Friday strictly after the meeting 
+     date; 'tomorrow' = +1 day; 'EOD' = meeting date; 'end of next week' = 
+     Friday of next week; 'end of month' = last day of month; 'mid-October' = 
+     15th; '10 Sep'/'Oct 3rd' = that date in the meeting's year (next year if 
+     already passed). Unresolvable phrases keep no due date but store the raw 
+     text. Accept? → Yes, those rules (Recommended)
+
+⏺ Update(GLOSSARY.md)
+  ⎿  Added 35 lines
+      22  **Ambiguous Owner**:
+      23  An owner name that still matches more than one Attendee after r
+          esolution (e.g. a bare "Priya" when Priya Nair and Priya Shah b
+          oth attended); the item is kept and reported but gets no follow
+          -up.
+      24 
+      25 +**Unassigned**:                                                
+      26 +An action item whose note gives no usable owner ("TBD", "Someon
+         +e", or no name at all); it is tracked but gets no follow-up.   
+      27 +                                                               
+      28 +**Team Item**:                                                 
+      29 +An action item addressed to "Team", owned by every Attendee of 
+         +that meeting.                                                  
+      30 +                                                               
+      31 +## Notes                                                       
+      32 +                                                               
+      33 +**Meeting Note**:                                              
+      34 +One markdown file recording a single meeting: its Meeting Date,
+         + Attendees, discussion and action items.                       
+      35 +_Avoid_: Minutes, doc, file                                    
+      36 +                                                               
+      37 +**Meeting Date**:                                              
+      38 +The date the meeting took place, read from the note's header; e
+         +very relative Due Phrase in the note is resolved against it.   
+      39 +                                                               
+      40 +**Malformed Note**:                                            
+      41 +A Meeting Note that is not readable text, is empty, or has no r
+         +esolvable Meeting Date; it is skipped and reported, never partl
+         +y ingested.                                                    
+      42 +_Avoid_: Invalid note, broken file                             
+      43 +                                                               
+      44 +**Decoy**:                                                     
+      45 +Text that looks like an action item but was not agreed, such as
+         + a quoted line or a line in a code block; it is never ingested.
+      46 +                                                               
+      47 +## Action items                                                
+      48 +                                                               
+      49 +**Action Item**:                                               
+      50 +A single commitment agreed in a Meeting Note: a task, its Owner
+         +(s) and optionally a Due Date.                                 
+      51 +_Avoid_: Task, todo, action                                    
+      52 +                                                               
+      53 +**Due Phrase**:                                                
+      54 +The deadline exactly as written in the note ("by Friday", "mid-
+         +October"); always kept, even when it cannot be resolved.       
+      55 +                                                               
+      56 +**Due Date**:                                                  
+      57 +The calendar date a Due Phrase resolves to, relative to the Mee
+         +ting Date; absent when the phrase is missing or unresolvable.  
+      58 +_Avoid_: Deadline                                              
+      59 +                                                               
+      60  ## Follow-ups
+      61 
+      62  **Follow-up Draft**:
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 3, Q13 — Following your rule ('Team' → all Attendees; 'Anita & 
+     Rahul' → both): should such an item be ONE shared Action Item with several 
+     Owners (one id; `done` closes it for everyone; it appears in each Owner's 
+     follow-up), rather than separate per-person copies? → One shared item 
+     (Recommended)
+     · Round 3, Q14 — Duplicates: the sample repeats items with small wording 
+     changes, e.g. 'Priya to send the revised quote to Acme by Friday' vs 'Priya
+     N. to send revised quote to Acme — by Friday', and 'Rahul to estimate the 
+     SSO work' vs 'Rahul to estimate SSO work by Monday'. Rule: same resolved 
+     Owner(s) + same task text after normalising (lowercase, strip punctuation, 
+     drop a/an/the, drop the Due Phrase) = one Action Item with multiple 
+     Sources. Accept exact-after-normalising rather than fuzzy matching? → 
+     Normalised exact match (Recommended)
+     · Round 3, Q15 — When a duplicate is seen again with a different due date, 
+     and when status changes in notes (later note shows `[x]`, or re-lists as `[
+     ]` after it was done), what wins? → Latest meeting wins; done is sticky 
+     (Recommended)
+     · Round 3, Q16 — Storage and ids: SQLite file (default ./.actiontrack.db, 
+     override with --db or ACTIONTRACK_DB). Re-running ingest on the same or 
+     overlapping folders is idempotent: no new items, ids never change, done 
+     status preserved. Ids are short stable integers. Accept? → SQLite, 
+     idempotent, int ids (Recommended)
+
+⏺ Update(GLOSSARY.md)
+  ⎿  Added 10 lines
+      50  A single commitment agreed in a Meeting Note: a task, its Owner
+          (s) and optionally a Due Date.
+      51  _Avoid_: Task, todo, action
+      52 
+      53 +**Source**:                                                    
+      54 +A Meeting Note an Action Item appears in; an item repeated acro
+         +ss meetings is one Action Item with many Sources, and its lates
+         +t Source sets its Due Date.                                    
+      55 +                                                               
+      56 +**Duplicate**:                                                 
+      57 +A repeat of an Action Item in another Meeting Note: same Owner(
+         +s) and the same task wording once case, punctuation, articles a
+         +nd the Due Phrase are ignored.                                 
+      58 +_Avoid_: Copy, repeat                                          
+      59 +                                                               
+      60 +**Open** / **Done** / **Overdue**:                             
+      61 +An Action Item is Open until it is marked Done, either by a che
+         +cked box in any Source or by a person; Done is final and a late
+         +r unchecked mention does not reopen it. An Open item past its D
+         +ue Date is Overdue.                                            
+      62 +                                                               
+      63  **Due Phrase**:
+      64  The deadline exactly as written in the note ("by Friday", "mid-
+          October"); always kept, even when it cannot be resolved.
+      65 
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 3, Q17 — Overdue is computed when you run a command (never stored):
+     Open AND Due Date before today. `list --status open` shows ALL open items 
+     including overdue ones; `--status overdue` shows only the overdue subset; 
+     `--due-before` is exclusive. A hidden `--today YYYY-MM-DD` (or env var) 
+     pins 'today' for tests/demos since sample notes are from Sep–Oct 2026. 
+     Accept? → Yes, as described (Recommended)
+     · Round 3, Q18 — How is `followup` invoked? The brief says 'followup 
+     <owner>' drafts per owner covering their open and overdue items. → 
+     `followup <owner>` + `--all` + `--dry-run` (Recommended)
+     · Round 3, Q19 — Running `followup` twice for the same Owner: what should 
+     happen to Gmail drafts? → New draft each run, warn (Recommended)
+     · Round 3, Q20 — Follow-up email content: per item, show task, Due Date (or
+     raw Due Phrase if unresolved, or 'no due date'), an OVERDUE marker with 
+     days late, and source meeting title + date. Overdue items listed first, 
+     then open by due date. Subject: 'Action items from recent meetings — N 
+     open, M overdue'. Plain text, neutral tone, signed by the sender configured
+     in settings. Accept? → Yes, as described (Recommended)
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 4, Q21 — Config: one `actiontrack.toml` (read with stdlib tomllib) 
+     holding the People Roster (name, email, aliases like 'anita'), sender name 
+     for sign-off, and the Gmail MCP server launch command + create-draft tool 
+     name. Looked up via --config, then ./actiontrack.toml, then 
+     ~/.config/actiontrack/. `ingest`/`list`/`done` work without it; only 
+     `followup` requires it. Accept? → Single TOML, followup-only (Recommended)
+     · Round 4, Q22 — What if the owner name matches NO Attendee of that meeting
+     (e.g. 'Karan to ...' in a note where Karan isn't listed, or a note with no
+     attendee list)? → Fall back to roster, else Unknown (Recommended)
+     · Round 4, Q23 — Ingest output and exit codes: print a summary (notes read,
+     items new / duplicate-merged / marked done, Malformed Notes with the 
+     reason per file, Ambiguous/Unknown owners, Unassigned items, unresolvable 
+     Due Phrases). Exit 0 whenever the run completes, even with malformed notes;
+     non-zero only for usage errors or a missing folder. Accept? → Yes, as 
+     described (Recommended)
+     · Round 4, Q24 — Which non-functional requirements should the NFRD commit 
+     to? (pick all that apply) → Safety: never send, Tests: pytest + sample 
+     fixture, `--json` output
+
+⏺ Update(GLOSSARY.md)
+  ⎿  Added 3 lines
+      22  **Ambiguous Owner**:
+      23  An owner name that still matches more than one Attendee after r
+          esolution (e.g. a bare "Priya" when Priya Nair and Priya Shah b
+          oth attended); the item is kept and reported but gets no follow
+          -up.
+      24 
+      25 +**Unknown Owner**:                                             
+      26 +A written owner name that matches no Attendee and no Person in 
+         +the People Roster; the item keeps the name as written, is repor
+         +ted, and gets no follow-up.                                    
+      27 +                                                               
+      28  **Unassigned**:
+      29  An action item whose note gives no usable owner ("TBD", "Someon
+          e", or no name at all); it is tracked but gets no follow-up.
+      30 
+
+⏺ Answered Claude's questions:
+  ⎿  · Round 5, Q25 — Which words mark a Due Phrase? Proposed: only a trailing 
+     'by …' (incl. '— by Friday'), 'due …' / 'results due …', and the table's 
+     Due column. Dates elsewhere stay part of the task text, so 'Sam to schedule
+     cutover for Saturday 10 Oct' and 'Karan to freeze invoice edits from 9 
+     Oct' have NO Due Date. Accept? → Only by/due/Due column (Recommended)
+     · Round 5, Q26 — `list` with no filters: show Open items only (overdue 
+     first, then by Due Date, undated last), as a table of id, owner(s), task, 
+     due, status, source meeting. `--status done` or `--all` to see finished 
+     ones. `done <id>`: unknown id → error exit 1; already Done → message, exit 
+     0. Accept? → Open only by default (Recommended)
+⏺ I've run five rounds of questions and every decision now has an answer. I'll
+  write the requirements doc once you confirm the summary below is right.
+
+  So far I've written:
+  - Action-Tracker/GLOSSARY.md: the shared terms (Person, People Roster,
+    Attendee, Owner, Ambiguous / Unknown Owner, Unassigned, Team Item, Meeting
+    Note, Malformed Note, Decoy, Action Item, Source, Duplicate, Open / Done /
+    Overdue, Due Phrase, Due Date, Follow-up Draft).
+  - Action-Tracker/docs/adr/0001-followup-drafts-via-own-mcp-client.md: why
+    actiontrack talks to Gmail through its own MCP client (MCP is the protocol
+    the Gmail connector uses).
+
+  What we agreed
+
+  Area: Stack
+  Decision: Python 3.11+ standard library. The only extra package is the
+    official mcp SDK, used just for Gmail. Data lives in a SQLite file
+    (./.actiontrack.db, or set --db / ACTIONTRACK_DB).
+  ────────────────────────────────────────
+  Area: Gmail
+  Decision: The tool starts a Gmail MCP server you configure and only ever
+    calls its create-draft tool. Never-send is built into the code and covered
+    by a test.
+  ────────────────────────────────────────
+  Area: Config
+  Decision: One actiontrack.toml holds the people roster (name, email,
+    aliases), the sender name and the server command. Only followup needs it.
+  ────────────────────────────────────────
+  Area: What counts as an action item
+  Decision: Checkbox lines (-, * or + bullets, any indent, [x] or [X]), @name:
+    lines, the Owner/Action/Due table, and ACTION: lines. Quoted lines and
+    code blocks are ignored.
+  ────────────────────────────────────────
+  Area: Owners
+  Decision: Names are matched against that meeting's attendees, then against
+    the roster. If both Priyas attended and the note just says "Priya", the
+    owner is ambiguous. A name nobody matches is an unknown owner. "Team"
+    means every attendee, "A & B" means both people on one shared item, and
+    "TBD", "Someone" or no name means unassigned. Only items with a clear
+    owner get a follow-up.
+  ────────────────────────────────────────
+  Area: Malformed notes
+  Decision: A note is skipped and reported if it isn't text, is empty, or has
+    no meeting date it can read. Non-.md files are ignored and counted.
+  ────────────────────────────────────────
+  Area: Due dates
+  Decision: Only a trailing "by …", a "due …" or the table's Due column
+    counts. The date is worked out from the meeting date (e.g. "by Friday"
+    means the next Friday after the meeting). The original wording is always
+    kept.
+  ────────────────────────────────────────
+  Area: Duplicates
+  Decision: Same owner(s) and same wording, ignoring case, punctuation,
+    "a/an/the" and the due phrase, means one item with several source notes.
+    The latest meeting sets the due date. Once an item is done it stays done.
+  ────────────────────────────────────────
+  Area: Statuses
+  Decision: Overdue is worked out each time a command runs. Overdue items also
+    count as open. A hidden --today option fixes the date for tests and demos.
+  ────────────────────────────────────────
+  Area: Commands
+  Decision: list shows open items by default and supports --json. done on an
+    unknown id fails with exit code 1. followup <owner> also takes --all and
+    --dry-run, and creates a new draft every run (warning if one was made
+    recently). The email is plain text with overdue items first.
+  ────────────────────────────────────────
+  Area: ingest
+  Decision: Prints a full report and exits 0 even when it skips malformed
+    notes.
+  ────────────────────────────────────────
+  Area: Non-functional requirements
+  Decision: Never send email, pytest with a full end-to-end test on the sample
+    notes/ folder (Gmail faked), and JSON output. No performance target.
+
+  Assumptions I'll build in unless you object
+  1. Item ids stay the same after re-ingesting: they are tied to the source note
+     and the line it came from, not to who the owner turns out to be. That way,
+     adding the config later (which can change owner matching) doesn't create
+     new items.
+  2. "Team" in a note with no attendee list becomes unassigned.
+  3. Nested sub-items count as separate items.
+
+  Reply yes and I'll write Action-Tracker/.scratch/actiontrack/requirements.md
+  with numbered functional (FR-x) and non-functional (NFR-x) requirements, each
+  tied to an example from the sample notes. Otherwise, tell me which line to
+  change.
+
+  I followed your choice to ignore ../assesment/ and didn't read past its file
+  list. I also didn't check which Gmail MCP server to name as the default; I'll
+  choose one when writing the doc.
+
+✻ Cogitated for 3m 52s · done Wednesday 9:34 PM
+
+❯ this looks good you can now write a function requirement document,            
+  non-functional requirement document, a claude.md.                             
+
+⏺ Skill(mattpocock-skills:writing-for-agents)
+  ⎿  Loaded skill
+
+⏺ Writing the three docs now. First, checking a few sample-note facts so the
+  acceptance examples are correct.
+
+  Ran 1 shell command (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ this looks good you can now write a function requirement document,            
+  non-functional requirement document, a claude.md. keep FRD and NFRD inside    
+  docs no need for strach                                                       
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(docs/frd.md)
+  ⎿  Wrote 274 lines to docs/frd.md
+      1 # actiontrack — Functional Requirements
+      2 
+      3 actiontrack is a CLI that reads a folder of markdown Meeting Note
+        s, tracks the Action Items in them, and drafts follow-up emails t
+        o their Owners as Gmail drafts for a human to review and send.
+      4 
+      5 Domain terms (Meeting Note, Owner, Ambiguous Owner, Due Phrase, S
+        ource, Duplicate, …) are defined in [`../GLOSSARY.md`](../GLOSSAR
+        Y.md) and used here with exactly that meaning. Non-functional req
+        uirements live in [`nfrd.md`](nfrd.md).
+     … +269 lines (ctrl+o to expand)
+
+⏺ Write(docs/nfrd.md)
+  ⎿  Wrote 56 lines to docs/nfrd.md
+      1 # actiontrack — Non-Functional Requirements
+      2 
+      3 These are the qualities every actiontrack feature must have. Func
+        tional behaviour is in [`frd.md`](frd.md), and terms are in [`../
+        GLOSSARY.md`](../GLOSSARY.md). Refer to requirements as `NFR-<n>`
+        .
+      4 
+      5 ## NFR-1 Safety: drafts only, never send
+      6 - Email leaves actiontrack only as a Gmail draft. The Gmail adapt
+        er calls exactly one MCP tool: the configured create-draft tool.
+     … +50 lines (ctrl+o to expand)
+
+⏺ Write(CLAUDE.md)
+  ⎿  Wrote 22 lines to CLAUDE.md
+      1 # actiontrack
+      2 
+      3 A Python CLI that ingests markdown meeting notes, tracks their ac
+        tion items, and creates Gmail **drafts** for follow-ups.
+      4 
+      5 ## Read before working
+      6 - `docs/frd.md`: what each command does. It is the spec, with sta
+        ble `FR-<n>` ids and acceptance examples against `notes/`.
+      7 - `docs/nfrd.md`: qualities every change must keep (`NFR-<n>`).
+      8 - `GLOSSARY.md`: domain terms. Use them verbatim in code, tests a
+     … +15 lines (~1 KB) (ctrl+o to expand)
+
+⏺ Update(docs/frd.md)
+  ⎿  Added 1 line, removed 1 line
+      170  - Exit `0` when every attempted draft succeeded; `1` if any fa
+           iled (the others are still attempted and reported). A missing
+           config, or an MCP server that won't start, is an error with a
+           clear message.
+      171 
+      172  ### FR-16 Email content
+      173 -Plain text:                                                   
+      173 +Plain text (illustrative only, with today = 2026-10-23):      
+      174 
+      175  ```
+      176  To: priya.nair@example.com
+
+⏺ I've written all three documents in Action-Tracker/, alongside the glossary
+  and decision record from the brainstorm.
+
+  - docs/frd.md (functional requirements): requirements FR-1 to FR-18 cover the
+    four commands, the config file and how each parsing rule works. It ends with
+    26 expected results taken from the sample notes, with "today" fixed at
+    2026-10-15. For example, "Priya to circulate the go/no-go summary" has an
+    ambiguous owner, and the quoted "Karan to refund…" line is ignored because
+    it was never agreed. These double as the end-to-end test cases.
+  - docs/nfrd.md (non-functional requirements): NFR-1 to NFR-9 cover never
+    sending email, skipping bad notes without crashing, repeatable output,
+    security, tests, exit codes and --json output, dependencies, OS support, and
+    code structure. It also says what isn't promised: no performance targets,
+    no Windows support, and one user of the database at a time.
+  - CLAUDE.md: short instructions for Claude, pointing to the three documents
+    and the decision record. It warns that the parent folder's glossary belongs
+    to the unrelated Gatepass project, sets four hard rules (drafts only, skip
+    and report bad notes, stable ids, standard library plus mcp), and says to
+    write tests first.
+
+  Two choices I made while writing that we didn't discuss:
+  - Re-ingesting after adding the config: if two existing items turn out to be
+    duplicates, they merge into the lower id, and done <old id> still works.
+  - Sample follow-up email in FR-16: the items in it are made up and only show
+    the format.
+
+  Things to know before you start building:
+  - Gmail MCP server: I didn't check which one to use by default or what its
+    create-draft tool expects as arguments. It's listed as open in docs/frd.md
+    §8.
+  - "next Tuesday": I took it to mean Tuesday of the following week. Some people
+    read it as the very next Tuesday, so confirm with the team.
+  - Unchecked dates: I worked out the acceptance dates by hand from weekday
+    arithmetic; nothing has verified them yet.
+
+✻ Cogitated for 1m 50s · done Wednesday 9:40 PM
+
+❯ Lets build a document which conver techinical details and non techinical      
+  details. if any question ask them using the AskUserQuestion tool              
+
+⏺ Answered Claude's questions:
+  ⎿  · What kind of document should this be? It would sit next to docs/frd.md 
+     and docs/nfrd.md, which already hold the requirements. → 2 docs one for 
+     techincal details like language, mcps etc, inside docs/techinical_details 
+     and one for non techinical details if any
+     · Where should the document live? → Local markdown in docs/ (Recommended)
+     · How much technical detail should Part B include? → Schema + modules + 
+     flows (Recommended)
+     · Which extra sections should be included? Pick all that apply. → Setup & 
+     run guide, Risks & limitations, Demo walkthrough
+
+⏺ Write(docs/technical_details.md)
+  ⎿  Wrote 304 lines to docs/technical_details.md
+       1 # actiontrack — Technical Details
+       2 
+       3 How actiontrack is built. Behaviour is specified in [`frd.md`](f
+         rd.md) (`FR-<n>`), qualities in [`nfrd.md`](nfrd.md) (`NFR-<n>`)
+         , terms in [`../GLOSSARY.md`](../GLOSSARY.md), and decisions in
+         [`adr/`](adr/). This document covers the *how*: stack, modules,
+         data model, flows, testing and setup.
+       4 
+       5 ---
+       6 
+     … +298 lines (ctrl+o to expand)
+
+⏺ Write(docs/non_technical_details.md)
+  ⎿  Wrote 78 lines to docs/non_technical_details.md
+       1 # actiontrack — Overview for Everyone
+       2 
+       3 A plain-language guide to what actiontrack does, who it is for a
+         nd how it keeps people's inboxes safe. Engineers should read [`t
+         echnical_details.md`](technical_details.md).
+       4 
+       5 ## The problem
+       6 
+       7 Our meeting notes are saved as text files. Each meeting ends wit
+         h a list of action items, such as "Priya to send the revised quo
+     … +72 lines (~4 KB) (ctrl+o to expand)
+
+⏺ Update(CLAUDE.md)
+  ⎿  Added 1 line
+       5  ## Read before working
+       6  - `docs/frd.md`: what each command does. It is the spec, with s
+          table `FR-<n>` ids and acceptance examples against `notes/`.
+       7  - `docs/nfrd.md`: qualities every change must keep (`NFR-<n>`).
+       8 +- `docs/technical_details.md`: how it's built. Read it before c
+         +reating or moving modules, changing the SQLite schema, or touch
+         +ing the ingest/followup flow.                                  
+       9  - `GLOSSARY.md`: domain terms. Use them verbatim in code, tests
+           and messages.
+      10  - `docs/adr/`: decisions already made. Read the ADRs before cha
+          nging the Gmail adapter, owner resolution or duplicate handling
+          .
+      11 
+
+⏺ I wrote the two documents you asked for in Action-Tracker/docs/. Neither has
+  been checked against running code yet, because none exists.
+
+  docs/technical_details.md is for engineers:
+  - Stack: Python 3.11+ with only the standard library, a SQLite database file,
+    a TOML config file, and the official mcp SDK for talking to Gmail. Each
+    choice has a one-line reason.
+  - Architecture: one Mermaid diagram of the 10 modules, with a rule that the
+    parsing and date/owner logic never touch the database or Gmail, so it can be
+    tested on its own. It also has the package layout and a table of what each
+    module owns, linked to the FR/NFR ids.
+  - Data model: full SQLite table definitions (notes, items, item_owners,
+    sources, drafts), plus how duplicate items are matched, with a worked
+    example.
+  - Flows: an ingest flowchart, a sequence diagram for the Gmail draft step, and
+    a table of error cases and exit codes.
+  - Testing: what each test file covers, plus a fake Gmail server that records
+    every call, used to prove the tool never sends.
+  - Setup and run guide, and an 8-step demo on the sample notes/ folder with the
+    date fixed at 2026-10-15.
+  - Risks and limitations: a table of 9, each with its impact and what to do
+    about it.
+
+  docs/non_technical_details.md is for everyone else: the problem, what the tool
+  does, a typical week, how it handles messy notes, safety and privacy (drafts
+  only, never sends), what it doesn't do yet, and tips for writing notes.
+
+  I also added a line to CLAUDE.md pointing to the technical doc.
+
+  Two risks are only written down in the technical doc, not decided:
+  - Edited notes: if someone changes a note after it has been ingested, the old
+    item stays open, and deleting a note doesn't remove its items. For now the
+    fix is to mark the old item done with actiontrack done <id>.
+  - Gmail server not chosen: followup can't run until we pick a Gmail MCP server
+    and confirm what its create-draft tool expects. The setup guide and the
+    example config (actiontrack.example.toml, mentioned but not written yet)
+    both depend on that choice.
+
+  The demo's file counts come from the sample folder: 35 .md files, of which 4
+  are broken and get skipped, plus 1 .txt that is ignored. I didn't give item
+  counts because they depend on the parser.
+
+✻ Worked for 2m 3s · done Wednesday 9:46 PM
+
+❯ To start development using spec-drrivven development we would need            
+  specification docs, lets buils some specs from these requirement using        
+  /mattpocock-skills:to-spec  inside the docs                                   
+
+⏺ Skill(mattpocock-skills:to-spec)
+  ⎿  Loaded skill
+
+⏺ Answered Claude's questions:
+  ⎿  · Test seams for the spec. Proposal: (1) the main seam is the CLI entry 
+     point called in-process, `main(argv)` with a temp database, a temp notes 
+     folder and a pinned `--today`, asserting on stdout/JSON and the exit code. 
+     Nearly every behaviour (parsing, owners, dates, duplicates, list, done) is 
+     tested through it. (2) The Gmail MCP server is swapped for a fake stdio 
+     server named in the test config; it records every tool call. This replaces 
+     the per-module unit tests listed in docs/technical_details.md §5 and NFR-5,
+     which I'd update to match. OK? → CLI + fake MCP only (Recommended)
+     · How should the specs be split? They'll be written inside 
+     Action-Tracker/docs/specs/ with a `Status: ready-for-agent` line. → 
+     Fine-grained
+
+⏺ Seams agreed. Writing 9 specs in docs/specs/, then aligning the testing
+  sections of the NFRD and technical doc with the two-seam decision.
+⏺ Write(docs/specs/01-notes-and-ingest-run.md)
+  ⎿  Wrote 77 lines to docs/specs/01-notes-and-ingest-run.md
+      1 # 01 — Notes: folder scan, note headers and Malformed Notes
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: none
+      5 Requirements: FR-1, FR-2, FR-3, FR-12, NFR-2, NFR-3, NFR-4, NFR-6
+        , NFR-7, NFR-8
+      6 
+      7 ## Problem Statement
+      8 
+      9 Our meeting notes pile up as markdown files in a folder. Some fol
+     … +69 lines (~10 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/02-action-item-extraction.md)
+  ⎿  Wrote 72 lines to docs/specs/02-action-item-extraction.md
+      1 # 02 — Action Items: shapes, Decoys and the owner / task / Due Ph
+        rase split
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 01
+      5 Requirements: FR-4, FR-5, FR-6, FR-10 (single Source), FR-11 (sam
+        e-line idempotency), FR-13 (basic listing)
+      6 
+      7 ## Problem Statement
+      8 
+     … +64 lines (ctrl+o to expand)
+
+⏺ Write(docs/specs/03-due-date-resolution.md)
+  ⎿  Wrote 63 lines to docs/specs/03-due-date-resolution.md
+      1 # 03 — Due Dates: resolving Due Phrases against the Meeting Date
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 02
+      5 Requirements: FR-8, FR-12 (unresolved Due Phrases), NFR-3
+      6 
+      7 ## Problem Statement
+      8 
+      9 Deadlines in notes are written the way people speak: "by Friday",
+         "tomorrow", "end of next week", "mid-October", "Oct 3rd". Withou
+     … +55 lines (~6 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/04-configuration.md)
+  ⎿  Wrote 58 lines to docs/specs/04-configuration.md
+      1 # 04 — Configuration: `actiontrack.toml` and the People Roster
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 01
+      5 Requirements: FR-18, FR-7 (roster input), NFR-1 (draft-tool valid
+        ation), NFR-4
+      6 
+      7 ## Problem Statement
+      8 
+      9 Notes only contain names, never email addresses, and the tool has
+     … +50 lines (~5 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/05-owner-resolution.md)
+  ⎿  Wrote 62 lines to docs/specs/05-owner-resolution.md
+      1 # 05 — Owners: resolving written names to Persons
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 02, 04
+      5 Requirements: FR-7, FR-12 (owner sections of the report), FR-13 (
+        owner column)
+      6 
+      7 ## Problem Statement
+      8 
+      9 Notes name owners loosely: "Priya", "Priya N.", "@anita", "Anita
+     … +54 lines (~6 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/06-duplicates-status-and-reingest.md)
+  ⎿  Wrote 63 lines to docs/specs/06-duplicates-status-and-reingest.md
+      1 # 06 — Duplicates, status across Sources, and re-ingest
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 03, 05
+      5 Requirements: FR-9, FR-10, FR-11, FR-12 (merge/done counts)
+      6 
+      7 ## Problem Statement
+      8 
+      9 The same commitment is repeated across several meetings with smal
+        l wording changes ("send the revised quote to Acme" → "send revis
+     … +55 lines (~6 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/07-list-command.md)
+  ⎿  Wrote 64 lines to docs/specs/07-list-command.md
+      1 # 07 — `actiontrack list`: filters, Overdue and ordering
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 06
+      5 Requirements: FR-13, NFR-3, NFR-6
+      6 
+      7 ## Problem Statement
+      8 
+      9 Once items are tracked, people need quick answers: what's still o
+        pen, what's late, what does Priya owe, what's due before the rele
+     … +56 lines (~6 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/08-done-command.md)
+  ⎿  Wrote 50 lines to docs/specs/08-done-command.md
+      1 # 08 — `actiontrack done <id>`
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 06
+      5 Requirements: FR-14, FR-10, FR-11
+      6 
+      7 ## Problem Statement
+      8 
+      9 Work often gets finished between meetings, and nobody will write
+        a new note just to tick it off. Without a direct way to close an
+     … +42 lines (~3 KB) (ctrl+o to expand)
+
+⏺ Write(docs/specs/09-followup-drafts.md)
+  ⎿  Wrote 73 lines to docs/specs/09-followup-drafts.md
+      1 # 09 — `actiontrack followup`: Follow-up Drafts through the Gmail
+         MCP server
+      2 
+      3 Status: ready-for-agent
+      4 Blocked by: 04, 07
+      5 Requirements: FR-15, FR-16, FR-17, NFR-1, NFR-4, NFR-5, ADR-0001
+      6 
+      7 ## Problem Statement
+      8 
+      9 Follow-up emails after meetings are written late or not at all, a
+     … +65 lines (~8 KB) (ctrl+o to expand)
+
+⏺ Update(docs/specs/07-list-command.md)
+  ⎿  Added 1 line, removed 1 line
+      41  ## Implementation Decisions
+      42 
+      43  - **The `store` query** takes filters (Owner Persons or Unassig
+          ned, status, due-before, today) and returns live items with the
+          ir Owners and Sources, already ordered. Overdue = not Done and
+          Due Date < today. Days overdue = today − Due Date.
+      44 -- **`--owner` resolution** happens in the CLI against known Per
+         -sons (Attendees across ingested notes plus the roster if a conf
+         -ig is present): exact full name, then alias, then unique first 
+         -name. Zero matches or several → exit `2` with the candidates. T
+         -he special value `unassigned` selects Unassigned items. Ambiguo
+         -us and Unknown items match `--owner` only when the full written
+         - name is given exactly (e.g. `--owner Priya` lists them? No: `-
+         --owner Priya` errors as ambiguous; they are reachable with `--a
+         -ll`/`--status` and in the ingest report).                      
+      44 +- **`--owner` resolution** happens in the CLI against known Per
+         +sons (Attendees across ingested notes plus the roster if a conf
+         +ig is present): exact full name, then alias, then unique first 
+         +name. Zero matches or several → exit `2` with the candidates. T
+         +he special value `unassigned` selects Unassigned items. `--owne
+         +r` never selects Ambiguous or Unknown items; they appear in unf
+         +iltered listings and in the ingest report.                     
+      45  - **Defaults:** no status filter means `open`; `--all` override
+          s any `--status`.
+      46  - **Table rendering:** fixed columns; the task is truncated wit
+          h `…` to the terminal width (falling back to 100 columns when i
+          t can't be detected); `--json` is never truncated.
+      47  - **JSON contract:** the field list in story 20, with dates in
+          ISO format. Adding fields is allowed; renaming or removing them
+           is a breaking change (NFR-6).
+
+⏺ Update(docs/specs/06-duplicates-status-and-reingest.md)
+  ⎿  Added 1 line, removed 1 line
+      47  ## Testing Decisions
+      48 
+      49  - Through the CLI seam: multi-note scenarios in the temp folder
+          , asserting on `list --json` and the ingest report, with re-run
+          s inside the same test.
+      50 -- **Cases:** wording-noise duplicates merge; different Owners d
+         -on't; a later Due Phrase wins and a later no-phrase mention kee
+         -ps the date; `[x]` in a later Source → Done; a later `[ ]` does
+         -n't reopen; CLI-done survives re-ingest (once spec 08 exists, o
+         -therwise test via a checked Source); identical re-ingest → zero
+         - new items and identical JSON; an overlapping folder adds only 
+         -the new; a roster change that makes an Unknown item equal to an
+         - existing Person item merges into the lower id and the higher i
+         -d resolves to it.                                              
+      50 +- **Cases:** wording-noise duplicates merge; different Owners d
+         +on't; a later Due Phrase wins and a later no-phrase mention kee
+         +ps the date; `[x]` in a later Source → Done; a later `[ ]` does
+         +n't reopen (CLI-done surviving re-ingest is tested in spec 08);
+         + identical re-ingest → zero new items and identical JSON; an ov
+         +erlapping folder adds only the new; a roster change that makes 
+         +an Unknown item equal to an existing Person item merges into th
+         +e lower id and the higher id resolves to it.                   
+      51  - **Sample fixture** (FRD §6): "send (the) revised quote to Acm
+          e" → one item, three Sources (09-01, 09-08, 09-15), due 2026-09
+          -11, Done; "estimate (the) SSO work" → one item, Rahul Verma, d
+          ue 2026-09-28; "approve the Q4 cloud spend" → one item, Done fr
+          om `[X]` on 2026-10-02; "freeze invoice edits from 9 Oct" → one
+           item, two Sources, no Due Date.
+      52  - **Prior art:** specs 01–05 harness.
+      53 
+
+⏺ Update(docs/nfrd.md)
+  ⎿  Added 3 lines, removed 2 lines
+      23  - The MCP server is started from the config's argument list (no
+           shell). The database file is created readable by its owner onl
+          y.
+      24 
+      25  ## NFR-5 Testability
+      26 -- Tests use pytest. Parsing, Owner resolution, Due Date resolut
+         -ion and Duplicate detection are pure functions, tested without 
+         -a database or MCP server.                                      
+      27 -- One unit test per rule row in FR-7 and FR-8, and one per Malf
+         -ormed reason in FR-3.                                          
+      26 +- Tests use pytest and use exactly two seams. (1) The CLI entry
+         + point is called in-process with a temp notes folder, a temp da
+         +tabase and a pinned `--today`; tests assert only on exit code, 
+         +output and `--json`. (2) The Gmail MCP server is replaced by a 
+         +fake stdio server that records every tool call. No test calls i
+         +nternal functions or reads tables directly.                    
+      27 +- Parsing, Owner resolution, Due Date resolution and Duplicate 
+         +detection are still written as pure functions (NFR-9), but they
+         + are tested through the CLI using small crafted notes.         
+      28 +- At least one test per rule row in FR-7 and FR-8, and one per 
+         +Malformed reason in FR-3.                                      
+      29  - An end-to-end test ingests the provided `notes/` folder with
+          `--today 2026-10-15` and asserts every row of the FRD's accepta
+          nce examples (FRD §6).
+      30  - Gmail is replaced by a fake MCP server in tests. No test need
+          s network or real credentials.
+      31  - The suite runs with one command: `pytest`.
+
+⏺ Update(docs/technical_details.md)
+  ⎿  Added 6 lines, removed 9 lines
+      228 
+      229  ## 5. Testing
+      230 
+      231 -| Layer | File | What it proves |                             
+      232 -|---|---|---|                                                 
+      233 -| Notes | `test_notes.py` | Both header forms; each date forma
+          -t; one test per Malformed reason (FR-3) |                     
+      234 -| Items | `test_items.py` | Every shape in FR-4; decoys in blo
+          -ckquotes and code fences; owner/task/Due Phrase split |       
+      235 -| Owners | `test_owners.py` | One test per FR-7 step, includin
+          -g `Priya N.`, `@anita`, `A & B`, Team and Ambiguous |         
+      236 -| Dates | `test_dates.py` | One test per FR-8 row, including t
+          -he year rollover |                                            
+      237 -| Store | `test_store.py` | Dedupe, merge into the lower id, D
+          -one is sticky, re-ingest is idempotent, rollback on error |   
+      238 -| End to end | `test_sample_notes.py` | Ingest `notes/` with `
+          ---today 2026-10-15` and assert every row of FRD §6 |          
+      239 -| Gmail | `test_gmail.py` | Against `fake_gmail_server.py`: on
+          -ly the draft tool is called; send-named tool rejected; dry run
+          - makes no calls (NFR-1) |                                     
+      231 +There are exactly two test seams (NFR-5):                     
+      232 
+      233 +1. **CLI entry point.** The `main(argv)` function is called in
+          +-process with a temp notes folder, a temp `--db` and a pinned 
+          +`--today`. Tests assert on the exit code, stdout/stderr and `-
+          +-json` output only.                                           
+      234 +2. **Gmail MCP boundary.** `fake_gmail_server.py` stands in fo
+          +r the real server.                                            
+      235 +                                                              
+      236 +Tests are grouped by spec, one file per `docs/specs/NN-*.md`, 
+          +and each test names the FR/NFR it proves. Rule tables (FR-7, F
+          +R-8) are parametrised tests that write a tiny note per row. `t
+          +est_sample_notes.py` ingests `notes/` with `--today 2026-10-15
+          +` and asserts every row of FRD §6.                            
+      237 +                                                              
+      238  `fake_gmail_server.py` is a tiny `mcp.server.fastmcp.FastMCP`
+           stdio server. It exposes `create_draft` and a decoy `send_mess
+           age`, and logs every call to a temp file the test reads.
+      239 
+      240  Run everything with `pytest`. No network or real credentials a
+           re needed.
+
+⏺ Update(CLAUDE.md)
+  ⎿  Added 1 line
+      3  A Python CLI that ingests markdown meeting notes, tracks their a
+         ction items, and creates Gmail **drafts** for follow-ups.
+      4 
+      5  ## Read before working
+      6 +- `docs/specs/NN-*.md`: the build queue. Each spec has a `Status
+        +:` line and a `Blocked by:` line, so build specs in number order
+        + once their blockers are done, and set `Status: done` when a spe
+        +c's tests pass.                                                 
+      7  - `docs/frd.md`: what each command does. It is the spec, with st
+         able `FR-<n>` ids and acceptance examples against `notes/`.
+      8  - `docs/nfrd.md`: qualities every change must keep (`NFR-<n>`).
+      9  - `docs/technical_details.md`: how it's built. Read it before cr
+         eating or moving modules, changing the SQLite schema, or touchin
+         g the ingest/followup flow.
+
+⏺ Update(CLAUDE.md)
+  ⎿  Added 1 line
+      20 
+      21  ## Working
+      22  - Test-first: each FR/NFR rule gets a pytest test citing its id
+          . Run `pytest`.
+      23 +- Tests use only two seams: the CLI entry point (with a temp fo
+         +lder, temp `--db` and pinned `--today`) and the fake Gmail MCP 
+         +server. Assert only on exit code, output and `--json`.         
+      24  - `notes/` is the shared fixture. Treat it as read-only test da
+          ta and pin `--today 2026-10-15` in tests that depend on dates.
+      25  - When behaviour changes, update `docs/frd.md` in the same chan
+          ge, and `GLOSSARY.md` when a term changes.
+
+⏺ I wrote 9 specs in Action-Tracker/docs/specs/, one for each part of the tool,
+  all marked Status: ready-for-agent. Each follows the template: problem,
+  solution, 12–28 numbered user stories, implementation decisions, testing
+  decisions, out of scope and further notes. Each also lists the FR/NFR ids it
+  covers and the specs it waits on.
+
+  ┌─────┬──────────────────────────────────────────────────────────┬────────┐
+  │  #  │                           Spec                           │ Waits  │
+  │     │                                                          │   on   │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │     │ Reading the notes folder, note headers, broken notes,    │        │
+  │ 01  │ the CLI/database/report foundation and the shared test   │ –      │
+  │     │ helper                                                   │        │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 02  │ Action-item formats, ignored quotes and code blocks,     │ 01     │
+  │     │ splitting owner / task / deadline, basic list            │        │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 03  │ Turning deadline phrases into dates                      │ 02     │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 04  │ actiontrack.toml, the people list and config checks      │ 01     │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 05  │ Matching owner names to people (shared items, Team,      │ 02, 04 │
+  │     │ ambiguous, unknown, unassigned)                          │        │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 06  │ Duplicates, done status across notes, re-ingest and      │ 03, 05 │
+  │     │ merged ids                                               │        │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 07  │ list filters, overdue and ordering                       │ 06     │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 08  │ done <id>                                                │ 06     │
+  ├─────┼──────────────────────────────────────────────────────────┼────────┤
+  │ 09  │ followup: composing emails, Gmail drafts through MCP,    │ 04, 07 │
+  │     │ --dry-run and draft history                              │        │
+  └─────┴──────────────────────────────────────────────────────────┴────────┘
+
+  Specs 01, 02, 04 and 05 hand over to each other: owners are stored as written
+  until 05 resolves them, and deadline phrases are stored raw until 03 turns
+  them into dates. Every spec tests through the two places we agreed:
+  - The CLI entry point: run in-process with a temp folder, temp --db and a
+    fixed --today.
+  - A fake Gmail MCP server: it records every tool call, so tests can assert
+    that a send tool is never called.
+
+  Where it applies, each spec also checks its slice of the expected results in
+  FRD §6.
+
+  To keep the other docs consistent with this, I changed three files:
+  - docs/nfrd.md, NFR-5: now says tests use only those two places.
+  - docs/technical_details.md, §5: the one-test-file-per-module table is
+    replaced with one test file per spec.
+  - CLAUDE.md: now points to docs/specs/ as the build queue and states the
+    two-place testing rule.
+
+  A few decisions came up while writing that we never discussed:
+  - Spec 04: a config file that exists but is invalid stops ingest with exit
+    code 2.
+  - Spec 07: --owner never matches items whose owner is ambiguous or unknown.
+  - Spec 05: in "A & B", if any one name is unclear, the whole item is marked
+    unclear.
+
+  Two things are still open:
+  - Gmail MCP server (spec 09): we still haven't chosen one or confirmed which
+    arguments its create-draft tool takes.
+  - "next Tuesday" (spec 03): it still means Tuesday of the following week until
+    the team confirms.
+
+✻ Sautéed for 4m 56s · done Wednesday 9:56 PM
+
+❯ whats are the questions in gmail MCP and next tuesday?                        
+
+⏺ There are two open questions.
+
+  1. "next Tuesday" (spec 03, FR-8)
+
+  The two possible readings only give different dates when the weekday hasn't
+  happened yet in the meeting's week. In the sample, the 2026-10-05 retro (a
+  Monday) says "Rahul to start SSO spike by next Tuesday":
+
+  ┌─────────────────────────────────────────────────┬────────────┐
+  │                     Reading                     │  Due date  │
+  ├─────────────────────────────────────────────────┼────────────┤
+  │ A. Tuesday of the following week (current spec) │ 2026-10-13 │
+  ├─────────────────────────────────────────────────┼────────────┤
+  │ B. The very next Tuesday                        │ 2026-10-06 │
+  └─────────────────────────────────────────────────┴────────────┘
+
+  For a Wednesday meeting both readings give the same date: Tuesday of the
+  following week. The choice changes whether items like this show as overdue a
+  week earlier or later.
+
+  2. Gmail MCP server (spec 09, FR-17)
+
+  actiontrack starts a Gmail MCP server and calls its create-draft tool, but we
+  haven't chosen a server. Choosing one answers three things:
+  - Which server: it must run locally over stdio (the tool starts it as a
+    subprocess) and offer a create-draft tool. Each server has its own Google
+    login setup.
+  - What the draft tool takes: we assumed it takes to, subject and body. Real
+    servers differ: to may need to be a list, the body may be called text, or
+    there may be separate HTML and plain-text fields. If they differ, the config
+    needs a way to map our fields to theirs.
+  - What it returns: we store the Gmail draft id, so we need to know where the
+    result puts it.
+
+  Looking up candidate servers and their tool details is my job, not yours.
+  What's yours is which one we pick and any preferences.
+
+⏺ Answered Claude's questions:
+  ⎿  · How should 'by next <weekday>' be read? Example: a Monday 2026-10-05 
+     meeting says 'by next Tuesday'. A = Tuesday of the following week 
+     (2026-10-13), which is the current spec. B = the very next Tuesday 
+     (2026-10-06). The two only differ when that weekday is still ahead in the 
+     meeting's own week. → A: following week (Recommended)
+     · Gmail MCP server: should I research the available Gmail MCP servers now 
+     and recommend one? I'd check each one's draft tool name, arguments 
+     (to/subject/body), return format and login setup, then update spec 09 and 
+     the example config. → Defer until spec 09
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'EOF'
+      from pathlib import Path…)
+  ⎿  ok
+  ⎿  Updated docs/frd.md +1 -2
+      270  - HTML email.
+      271 
+      272  ## 8. Open items
+      273 -- Pick and document one tested stdio Gmail MCP server as the d
+          -efault, and confirm its create-draft tool's argument names (re
+          -cipient, subject, body). If they differ between servers, add a
+          - mapping to `[gmail]`.                                        
+      274 -- `next <weekday>` means the weekday in the following week (FR
+          --8). Confirm with the team, because some people read it as the
+          - very next one.                                               
+      273 +- Deferred to the start of spec 09: pick and document one test
+          +ed stdio Gmail MCP server as the default, and confirm its crea
+          +te-draft tool's argument names (recipient, subject, body). If 
+          +they differ between servers, add a mapping to `[gmail]`.      
+  ⎿  Updated docs/non_technical_details.md +1 -1
+      69 
+      70  - **Keep the people list up to date.** Follow-ups only go to pe
+          ople listed with an email address in the tool's settings file.
+      71  - **Write action items clearly.** "Name to do something by date
+          " works best. Unclear owners are flagged, not guessed.
+      72 -- **"Next Tuesday" means Tuesday of the following week.** If yo
+         -ur team means the very next Tuesday, tell the maintainers.     
+      72 +- **"Next Tuesday" means Tuesday of the following week.** Plain
+         + "by Tuesday" means the very next one.                         
+      73  - **Editing an old note** after it was read can leave an outdat
+          ed copy of the item open. Mark it done to clear it.
+      74  - **Each follow-up run creates a new draft.** Delete any extra
+          drafts you don't need. The tool warns if it drafted for someone
+           in the last 24 hours.
+      75 
+  ⎿  Updated docs/specs/03-due-date-resolution.md +1 -1
+      59 
+      60  ## Further Notes
+      61 
+      62 -- "next <weekday>" meaning the following week is an agreed assu
+         -mption that is still open for team confirmation (FRD §8). If it
+         - changes, only this resolver rule and its test change.         
+      62 +- "next <weekday>" meaning the following week is confirmed. Pla
+         +in "<weekday>" covers the very next one.                       
+      63  - Glossary terms used: Due Phrase, Due Date, Meeting Date.
+  ⎿  Updated docs/specs/09-followup-drafts.md +1 -1
+      69 
+      70  ## Further Notes
+      71 
+      72 -- **Open item:** pick and document one tested stdio Gmail MCP s
+         -erver for real use, and confirm its create-draft tool accepts `
+         -to`/`subject`/`body`. If it uses different argument names, add 
+         -an argument-name mapping to `[gmail]` (spec 04) rather than spe
+         -cial-casing servers in code.                                   
+      72 +- **Open item, decided at the start of this spec:** pick and do
+         +cument one tested stdio Gmail MCP server for real use, and conf
+         +irm its create-draft tool accepts `to`/`subject`/`body`. If it 
+         +uses different argument names, add an argument-name mapping to 
+         +`[gmail]` (spec 04) rather than special-casing servers in code.
+      73  - Glossary terms used: Follow-up Draft, Person, People Roster,
+          Owner, Open, Overdue, Done, Source, Ambiguous Owner, Unknown Ow
+          ner, Unassigned, Team Item.
+  ⎿  Updated docs/technical_details.md -1
+      294  | Exact-after-normalising dedupe misses heavier rewording | Th
+           e same commitment shows as two items | Accepted trade-off agai
+           nst false merges; spot-check `list` after ingest |
+      295  | Owner-part heuristic (capitalised words before ` to `) | A t
+           ask starting with a capitalised phrase could be misread as an
+           owner, which then shows as Unknown | Unknown Owners are report
+           ed at ingest for a human to check |
+      296  | Editing a note line after ingest creates a new occurrence; d
+           eleting a note doesn't remove its items | Stale items remain o
+           pen | Mark them done with `done <id>`; a cleanup command is ou
+           t of scope |
+      297 -| `next <weekday>` read as "the following week" | Due date may
+          - be a week later than someone meant | Confirm with the team (F
+          -RD §8) |                                                      
+      297  | A new draft on every run | Drafts can pile up in Gmail | 24-
+           hour warning; the human deletes extras |
+      298  | "Today" is the machine's local date | Overdue status can dif
+           fer across time zones at midnight | Acceptable for a single-us
+           er CLI |
+      299  | Single-user database | Concurrent runs may conflict | Out of
+            scope (NFR "Not committed") |
+⏺ Both questions are settled and the docs are updated to match.
+
+  "next Tuesday": it now officially means Tuesday of the following week. Plain
+  "by Tuesday" still means the very next Tuesday. In the sample, the Monday
+  2026-10-05 retro's "by next Tuesday" is due 2026-10-13. I removed the "confirm
+  with the team" notes from:
+  - docs/frd.md §8
+  - spec 03
+  - the risks table in docs/technical_details.md
+  - docs/non_technical_details.md
+
+  Gmail MCP server: postponed as you chose. The FRD and spec 09 now say it gets
+  decided at the start of spec 09. That choice covers three things: which local
+  server to use, what fields its draft tool expects (to, subject, body or
+  different names), and where it returns the draft id. Specs 01–08 don't need
+  it, so development can start now. Spec 09 stays marked ready-for-agent, but
+  the server has to be chosen before its Gmail part can be built.
+
+✻ Churned for 38s · done Wednesday 10:01 PM
+
+※ recap: We're planning the actiontrack CLI, and the requirements, design docs and 9 build specs are now in Action-Tracker/docs. Next is building spec 01 (reading the notes folder), test-first; the Gmail server choice waits until spec 09. (turn off recaps in /config)
