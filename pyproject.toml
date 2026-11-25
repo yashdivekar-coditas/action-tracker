@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "actiontrack"
+version = "0.1.0"
+description = "Ingest markdown meeting notes, track their action items, and create Gmail drafts for follow-ups."
+requires-python = ">=3.11"
+# NFR-7: stdlib only for now; `mcp` arrives with the Gmail adapter (spec 09).
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+actiontrack = "actiontrack.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
