@@ -70,8 +70,11 @@ class Harness:
 
     def write_roster(self, *people: tuple[str, list[str]]) -> Path:
         """Write ./actiontrack.toml (found automatically) with a People Roster of (name, aliases)."""
+        # JSON strings and arrays are valid TOML values, so quoting is always right.
         entries = "".join(
-            f'\n[[people]]\nname = "{name}"\nemail = "{name.split()[0].lower()}@example.com"\naliases = {aliases!r}\n'.replace("'", '"')
+            f"\n[[people]]\nname = {json.dumps(name)}\n"
+            f"email = {json.dumps(name.lower().replace(' ', '.') + '@example.com')}\n"
+            f"aliases = {json.dumps(aliases)}\n"
             for name, aliases in people
         )
         path = self.root / "actiontrack.toml"

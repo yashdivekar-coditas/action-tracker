@@ -246,3 +246,11 @@ def test_surname_initial_without_a_dot_and_spaced_aliases_match_fr7(harness: Har
     items = harness.ingest_note("- [ ] Priya N to send the quote\n- [ ] Big Boss to run the survey\n", attendees=PRIYAS_AND_RAHULS)
 
     assert [owner(i) for i in items] == [("person", ["Priya Nair"], []), ("person", ["Lena Fischer"], [])]
+
+
+def test_roster_names_with_apostrophes_and_shared_first_names_fr7_step5(harness: Harness) -> None:
+    harness.write_roster(("Sean O'Neil", ["O'Neil"]), ("Sam Lee", []), ("Sam Okafor", ["Sammy"]))
+
+    items = harness.ingest_note("- [ ] O'Neil to book the room\n- [ ] Sammy to test it\n")
+
+    assert [owner(i) for i in items] == [("person", ["Sean O'Neil"], []), ("person", ["Sam Okafor"], [])]
