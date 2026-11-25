@@ -156,10 +156,11 @@ def test_due_date_past_the_last_representable_day_is_unresolved_nfr2(harness: Ha
 # --- sample fixture (FRD §6) ------------------------------------------------------
 
 
+# A line that is one of several Sources shows the item's Due Date, from the latest Source (FR-9).
 SAMPLE_DUES = [
-    ("2026-09-01-quote-portal-kickoff.md", "send the revised quote to Acme by Friday", "2026-09-04"),
+    ("2026-09-01-quote-portal-kickoff.md", "send the revised quote to Acme by Friday", "2026-09-11"),
     ("2026-09-03-billing-migration-sync.md", "draft the test plan", "2026-09-11"),
-    ("2026-09-14-onboarding-flow-design.md", "by end of month", "2026-09-30"),
+    ("2026-09-14-onboarding-flow-design.md", "by end of month", "2026-10-02"),
     ("2026-09-18-design-review.md", "audit colour contrast", "2026-09-21"),
     ("2026-09-18-design-review.md", "agree on the component API", "2026-09-23"),
     ("2026-09-24-onboarding-flow-design.md", "estimate SSO work", "2026-09-28"),

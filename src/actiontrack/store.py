@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from actiontrack.items import Occurrence
+from actiontrack.items import Occurrence, dedupe_key
 from actiontrack.notes import Note
 from actiontrack.owners import Resolution
 
@@ -73,6 +73,11 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
         )
         """,
     ),
+    (
+        # Nullable: rows from before spec 06 get their key on the next ingest.
+        "ALTER TABLE items ADD COLUMN dedupe_key TEXT",
+        "CREATE UNIQUE INDEX items_live_key ON items (dedupe_key) WHERE merged_into IS NULL",
+    ),
 )
 
 # NFR-4: meeting content stays private on a shared machine.
@@ -89,6 +94,7 @@ class RecordResult:
 
     item_id: int
     new_item: bool
+    duplicate: bool  # a repeat attached to an existing item as another Source (FR-9)
     newly_done: bool
 
 
@@ -150,7 +156,11 @@ class Store:
         *,
         owner: Resolution,
     ) -> RecordResult:
-        """Store one occurrence as a Source, creating its item unless this line was seen before (FR-11).
+        """Store one occurrence as a Source of an item (FR-9, FR-11).
+
+        A line seen before updates its item in place; otherwise an item with the same dedupe key
+        gains the Source as a Duplicate; otherwise a new item is created. Two items that now share
+        a key violate the unique index and raise `StoreError` (merging them is spec 06 ticket 03).
 
         The Due Phrase and its resolved Due Date are rewritten on every ingest, so a rule fix
         applies on the next run (FR-8).
@@ -162,24 +172,45 @@ class Store:
             "SELECT item_id FROM sources WHERE note_path = ? AND line_key = ?",
             (path, occurrence.line_key),
         ).fetchone()
+        key = dedupe_key(owner.kind.value, owner.persons, occurrence.owner_part, occurrence.task)
         item_fields = (
             occurrence.task,
             occurrence.owner_part,
             occurrence.due_phrase,
             due_date.isoformat() if due_date else None,
         )
-        if row is None:
+        duplicate = False
+        if row is not None:
+            item_id = row[0]
+            self._conn.execute("UPDATE items SET dedupe_key = ? WHERE id = ?", (key, item_id))
+        elif live := self._conn.execute(
+            "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL", (key,)
+        ).fetchone():
+            item_id, duplicate = live[0], True
+        else:
             item_id = self._conn.execute(
-                "INSERT INTO items (task, written_owner, due_phrase, due_date) VALUES (?, ?, ?, ?)",
-                item_fields,
+                "INSERT INTO items (task, written_owner, due_phrase, due_date, dedupe_key) VALUES (?, ?, ?, ?, ?)",
+                (*item_fields, key),
             ).lastrowid
             assert item_id is not None
-        else:
-            item_id = row[0]
-            self._conn.execute(
-                "UPDATE items SET task = ?, written_owner = ?, due_phrase = ?, due_date = ? WHERE id = ?",
-                (*item_fields, item_id),
-            )
+        if row is not None or duplicate:
+            # shortcut: sources don't store their own Due Phrase, so an older Source ingested after
+            # a newer one can't restore a Due Date; spec 06 ticket 02 refines the latest-Source rules.
+            later = self._conn.execute(
+                """
+                SELECT 1 FROM sources s JOIN notes n ON n.path = s.note_path
+                WHERE s.item_id = ? AND (n.meeting_date, s.note_path) > (?, ?)
+                """,
+                (item_id, meeting_date.isoformat(), path),
+            ).fetchone()
+            if later is None:
+                self._conn.execute(
+                    "UPDATE items SET task = ?, written_owner = ? WHERE id = ?", (*item_fields[:2], item_id)
+                )
+                if occurrence.due_phrase is not None:  # a mention without one keeps the Due Date (FR-9)
+                    self._conn.execute(
+                        "UPDATE items SET due_phrase = ?, due_date = ? WHERE id = ?", (*item_fields[2:], item_id)
+                    )
         self._conn.execute(
             """
             INSERT INTO sources (note_path, line_key, item_id, line_no, raw_line, checked)
@@ -193,7 +224,9 @@ class Store:
         )
         self._set_owner(item_id, owner)
         newly_done = occurrence.checked and self._mark_done(item_id, meeting_date, by="note")
-        return RecordResult(item_id=item_id, new_item=row is None, newly_done=newly_done)
+        return RecordResult(
+            item_id=item_id, new_item=row is None and not duplicate, duplicate=duplicate, newly_done=newly_done
+        )
 
     def list_items(self) -> list[StoredItem]:
         """Every live (not merged) item in id order, each with its Sources."""

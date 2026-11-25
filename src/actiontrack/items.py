@@ -1,12 +1,14 @@
 """Find Action Items in a Meeting Note and split each into owner part, task and Due Phrase.
 
-Pure: works on the note's text only (NFR-9). FR-4 (shapes), FR-5 (Decoys), FR-6 (split).
+Pure: works on the note's text only (NFR-9). FR-4 (shapes), FR-5 (Decoys), FR-6 (split),
+FR-9 (dedupe key).
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+import unicodedata
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -227,3 +229,24 @@ def _last(matches: Iterator[re.Match[str]]) -> re.Match[str] | None:
     for last in matches:
         pass
     return last
+
+
+# --- dedupe key (FR-9) -----------------------------------------------------------------
+
+_ARTICLES = frozenset({"a", "an", "the"})
+_NAMED_OWNER_KINDS = frozenset({"ambiguous", "unknown"})  # no Persons: compare on what was written
+
+
+def dedupe_key(owner_kind: str, persons: Iterable[str], written_owner: str | None, task: str) -> str:
+    """The identity of an Action Item: two occurrences with the same key are Duplicates (FR-9).
+
+    `task` is already split from its Due Phrase, so the Due Phrase never reaches the key.
+    Example: `person:Priya Nair|send revised quote to acme`.
+    """
+    if owner_kind in _NAMED_OWNER_KINDS:
+        owners = " ".join((written_owner or "").casefold().split())
+    else:  # Unassigned has no Persons, so it compares on the task alone
+        owners = ",".join(sorted(persons))
+    unpunctuated = "".join(c for c in task.casefold() if not unicodedata.category(c).startswith("P"))
+    words = [word for word in unpunctuated.split() if word not in _ARTICLES]
+    return f"{owner_kind}:{owners}|{' '.join(words)}"
