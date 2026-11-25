@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import os
 import random
+import sqlite3
 
 import pytest
 
+from actiontrack import store
 from conftest import Harness, malformed_reasons
 
 TEMPLATE_NOTE = """\
@@ -333,8 +335,36 @@ def test_database_path_that_is_a_folder_fails_with_exit_1_nfr2(harness: Harness)
     assert harness.ingest(db=harness.notes).code == 1
 
 
+def test_store_error_mid_run_rolls_back_the_whole_run_nfr2(harness: Harness, monkeypatch) -> None:
+    harness.write("a.md", TEMPLATE_NOTE)
+    assert harness.ingest().code == 0
+    before = harness.db.read_bytes()
+
+    # No note content can make SQLite fail mid-run, so inject the failure: the first
+    # write of the run succeeds, the second raises. Assertions stay on the CLI's output.
+    original = store.Store.upsert_note
+    calls = []
+
+    def fail_on_second_write(self, path, note):
+        calls.append(path)
+        if len(calls) == 2:
+            raise sqlite3.OperationalError("disk I/O error")
+        original(self, path, note)
+
+    monkeypatch.setattr(store.Store, "upsert_note", fail_on_second_write)
+    harness.write("a.md", TEMPLATE_NOTE.replace("kickoff", "retro"))  # first write changes a row
+    harness.write("b.md", TEMPLATE_NOTE.replace("kickoff", "weekly"))
+
+    result = harness.ingest()
+
+    assert len(calls) == 2  # the first note really was written before the failure
+    assert result.code == 1
+    assert "disk I/O error" in result.err
+    assert harness.db.read_bytes() == before
+
+
 @pytest.mark.skipif(os.geteuid() == 0, reason="root can write read-only files")
-def test_failed_ingest_leaves_database_exactly_as_it_was_nfr2(harness: Harness) -> None:
+def test_read_only_database_fails_with_exit_1_and_is_unchanged_nfr2(harness: Harness) -> None:
     harness.write("a.md", TEMPLATE_NOTE)
     assert harness.ingest().code == 0
     before = harness.db.read_bytes()
