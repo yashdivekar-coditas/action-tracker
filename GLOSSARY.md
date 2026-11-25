@@ -54,7 +54,7 @@ A single commitment agreed in a Meeting Note: a task, its Owner(s) and optionall
 _Avoid_: Task, todo, action
 
 **Source**:
-A Meeting Note an Action Item appears in; an item repeated across meetings is one Action Item with many Sources, and its latest Source sets its Due Date.
+A Meeting Note an Action Item appears in; an item repeated across meetings is one Action Item with many Sources, and the latest Source that has a Due Phrase sets its Due Date and the latest Source sets its task.
 
 **Duplicate**:
 A repeat of an Action Item in another Meeting Note: same Owner(s) and the same task wording once case, punctuation, articles and the Due Phrase are ignored.
