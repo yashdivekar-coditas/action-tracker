@@ -8,12 +8,15 @@ Human output goes to stdout; warnings and report problems go to stderr (NFR-6).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+
+from actiontrack import ingest, store
 
 PROG = "actiontrack"
 
@@ -116,10 +119,45 @@ def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
     folder: Path = args.folder
     if not folder.is_dir():
         raise UsageError(f"folder not found: {folder}")
+    try:
+        report = ingest.run(folder, options.db)
+    except ingest.FolderError as exc:
+        raise UsageError(str(exc)) from exc
+    except store.StoreError as exc:
+        _error(f"ingest failed, database unchanged: {exc}")
+        return EXIT_FAILED
+
+    if args.json:
+        print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
+    else:
+        _print_ingest_report(report)
+    _warn_ingest_problems(report)
     return EXIT_OK
 
 
 # --- output -----------------------------------------------------------------------
+
+
+def _print_ingest_report(report: ingest.IngestReport) -> None:
+    print(
+        f"Ingested {_plural(report.notes_read, 'Meeting Note')}; "
+        f"skipped {_plural(report.malformed, 'Malformed Note')}; "
+        f"ignored {_plural(report.ignored, 'non-markdown file')}."
+    )
+    print(
+        f"Action Items: {report.items_new} new, "
+        f"{report.items_merged} merged as Duplicates, {report.items_done} newly Done."
+    )
+
+
+def _warn_ingest_problems(report: ingest.IngestReport) -> None:
+    """Report problems go to stderr in both output modes, so stdout stays pipeable (NFR-6)."""
+    for entry in report.malformed_notes:
+        print(f"Malformed Note: {entry.file}: {entry.reason}", file=sys.stderr)
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
 def _error(message: str) -> None:
