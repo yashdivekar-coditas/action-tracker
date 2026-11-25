@@ -187,3 +187,92 @@ def test_list_shows_every_source_in_meeting_date_order_fr9(harness: Harness) -> 
     [item] = harness.items()
 
     assert files(item) == ["c.md", "b.md", "a.md"]
+
+
+# --- the latest Source sets the Due Date and task text (FR-9, FR-8) -------------------
+
+
+def test_a_later_due_phrase_replaces_the_earlier_due_date_fr9(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-01", BASE)  # by Friday -> 2026-09-04
+    note(harness, "b.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme by Monday")
+
+    ingest(harness)
+
+    [item] = harness.items()
+    assert (item["due_phrase"], item["due_date"]) == ("Monday", "2026-09-14")
+
+
+def test_a_later_mention_without_a_due_phrase_keeps_the_due_date_fr9(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-01", BASE)
+    note(harness, "b.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme")
+
+    ingest(harness)
+
+    [item] = harness.items()
+    assert (item["due_phrase"], item["due_date"]) == ("Friday", "2026-09-04")
+
+
+def test_the_task_text_follows_the_latest_source_fr9(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-01", "- [ ] Rahul to send the revised quote to Acme")
+    note(harness, "b.md", "2026-09-08", "- [ ] Rahul to SEND revised quote to Acme!")
+
+    ingest(harness)
+
+    assert [i["task"] for i in harness.items()] == ["SEND revised quote to Acme!"]
+
+
+def test_on_a_meeting_date_tie_the_later_file_name_wins_fr9(harness: Harness) -> None:
+    note(harness, "b.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme by Monday")
+    note(harness, "a.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme by Friday")
+
+    ingest(harness)
+
+    [item] = harness.items()
+    assert (item["due_phrase"], item["due_date"]) == ("Monday", "2026-09-14")
+
+
+def test_a_later_dated_note_wins_whatever_its_file_name_or_ingest_order_fr9(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme by Monday")  # later Meeting Date
+    note(harness, "b.md", "2026-09-01", "- [ ] Rahul to send the revised quote to Acme by Friday")
+    ingest(harness)
+    [first] = harness.items()
+
+    # A fresh database, which ingests in file-name order, gives the same answer.
+    again = harness.ingest(db=harness.root / "fresh.db")
+    assert again.code == 0, again.err
+
+    assert (first["due_phrase"], first["due_date"]) == ("Monday", "2026-09-14")
+    assert harness.run("list", "--json", db=harness.root / "fresh.db").json == [first]
+
+
+def test_an_older_source_ingested_later_does_not_override_the_due_date_fr9(harness: Harness) -> None:
+    note(harness, "b.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme by Monday")
+    ingest(harness)
+    note(harness, "a.md", "2026-09-01", BASE)  # older Meeting Date, ingested after
+
+    ingest(harness)
+
+    [item] = harness.items()
+    assert (item["due_phrase"], item["due_date"]) == ("Monday", "2026-09-14")
+
+
+def test_reingest_rederives_the_due_date_of_a_sole_source_fr8(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-01", BASE)
+    ingest(harness)
+    note(harness, "a.md", "2026-09-08", BASE)  # same line, new Meeting Date
+
+    ingest(harness)
+
+    [item] = harness.items()
+    assert (item["due_phrase"], item["due_date"]) == ("Friday", "2026-09-11")
+
+
+def test_an_older_source_ingested_later_restores_a_due_date_fr9(harness: Harness) -> None:
+    note(harness, "b.md", "2026-09-08", "- [ ] Rahul to send the revised quote to Acme")
+    ingest(harness)
+    note(harness, "a.md", "2026-09-01", BASE)  # older Meeting Date, ingested after
+
+    ingest(harness)
+
+    [item] = harness.items()
+    assert (item["due_phrase"], item["due_date"]) == ("Friday", "2026-09-04")
