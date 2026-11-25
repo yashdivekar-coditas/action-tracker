@@ -30,6 +30,8 @@ EXIT_USAGE = 2
 DEFAULT_DB = Path(".actiontrack.db")
 ENV_DB = "ACTIONTRACK_DB"
 ENV_TODAY = "ACTIONTRACK_TODAY"
+LIST_STATUSES = ("open", "done", "overdue")
+
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 
 
@@ -87,7 +89,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "list",
         parents=[_global_options_parser()],
         help="show stored Action Items",
-        description="Show every stored Action Item in id order.",
+        description=(
+            "Show stored Action Items: Open ones by default, Overdue first (most late first), "
+            "then by Due Date with undated items last. Filters combine with AND."
+        ),
+    )
+    list_.add_argument(
+        "--status", choices=LIST_STATUSES, help="only items with this status; open includes Overdue (default: open)"
+    )
+    list_.add_argument("--all", action="store_true", help="show items of every status (overrides --status)")
+    list_.add_argument(
+        "--due-before", type=_day_argument, metavar="YYYY-MM-DD", help="only items due strictly before this date"
     )
     list_.add_argument("--json", action="store_true", help="print the items as a JSON array")
     list_.set_defaults(handler=_cmd_list)
@@ -113,19 +125,26 @@ def _resolve_global_options(args: argparse.Namespace) -> GlobalOptions:
     db = args.db or Path(os.environ.get(ENV_DB) or DEFAULT_DB)
     # An explicit `--today ''` is an error, but an empty environment variable counts as unset.
     today_text: str | None = args.today if args.today is not None else os.environ.get(ENV_TODAY) or None
-    return GlobalOptions(db=db, config=args.config, today=_parse_today(today_text))
+    today = date.today() if today_text is None else _parse_day(today_text, "--today")
+    return GlobalOptions(db=db, config=args.config, today=today)
 
 
-def _parse_today(text: str | None) -> date:
-    if text is None:
-        return date.today()
+def _parse_day(text: str, flag: str) -> date:
     # fromisoformat alone also accepts forms like 20261015 and 2026-W42-1.
     if _ISO_DAY.fullmatch(text):
         try:
             return date.fromisoformat(text)
         except ValueError:
             pass
-    raise UsageError(f"--today must be a YYYY-MM-DD date, got {text!r}")
+    raise UsageError(f"{flag} must be a YYYY-MM-DD date, got {text!r}")
+
+
+def _day_argument(text: str) -> str:
+    """argparse `type` for `--due-before`: the validated ISO date text; argparse turns the error into exit 2."""
+    try:
+        return _parse_day(text, "--due-before").isoformat()
+    except UsageError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 # --- commands ---------------------------------------------------------------------
@@ -157,7 +176,11 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     try:
         if options.db.exists():  # a read must not leave a new, empty database behind
             with store.transaction(options.db) as db:
-                stored = db.list_items()
+                stored = db.list_items(
+                    options.today,
+                    status=None if args.all else args.status or "open",
+                    due_before=args.due_before,
+                )
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
@@ -183,6 +206,7 @@ NO_VALUE = "—"
 
 
 def _item_status(item: store.StoredItem) -> str:
+    """`open` includes Overdue, as in `--status open`; `days_overdue` tells the two apart in JSON."""
     return "done" if item.done else "open"
 
 
@@ -198,6 +222,7 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
         "due_phrase": item.due_phrase,
         "due_date": item.due_date,
         "status": _item_status(item),
+        "days_overdue": item.days_overdue,
         "sources": [
             {
                 "file": Path(source.path).name,
@@ -226,7 +251,16 @@ def _owner_label(item: store.StoredItem) -> str:
             return item.written_owner or NO_VALUE
 
 
+def _status_label(item: store.StoredItem) -> str:
+    if item.days_overdue is not None:
+        return f"overdue ({item.days_overdue}d)"
+    return _item_status(item)
+
+
 def _print_items_table(stored: list[store.StoredItem]) -> None:
+    if not stored:
+        print("No matching items.")
+        return
     # shortcut: basic aligned columns, no truncation; spec 07 adds terminal-width rendering.
     header = ("ID", "OWNER", "TASK", "DUE", "STATUS")
     rows = [
@@ -235,7 +269,7 @@ def _print_items_table(stored: list[store.StoredItem]) -> None:
             _printable(_owner_label(item)),
             _printable(item.task),
             _printable(item.due_date or item.due_phrase or NO_VALUE),
-            _item_status(item),
+            _status_label(item),
         )
         for item in stored
     ]

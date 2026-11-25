@@ -133,6 +133,7 @@ class StoredItem:
     due_phrase: str | None
     due_date: str | None
     done: bool
+    days_overdue: int | None  # set only when the item is Overdue as of the `today` it was listed with
     sources: tuple[StoredSource, ...]
 
 
@@ -243,8 +244,28 @@ class Store:
         """`item_id`, or the item it was merged into (FR-11); merges repoint chains, so one hop is enough."""
         return self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()[0]
 
-    def list_items(self) -> list[StoredItem]:
-        """Every live (not merged) item in id order, each with its Sources."""
+    def list_items(
+        self, today: date, *, status: str | None = None, due_before: str | None = None
+    ) -> list[StoredItem]:
+        """Live (not merged) items matching every given filter, each with its Sources, in list order (FR-13).
+
+        `status` is `open` (not Done, Overdue included), `overdue` or `done`; None means every status.
+        `due_before` is an ISO date; items due on or after it, and undated items, are left out.
+        Overdue means not Done with a Due Date before `today`. Order: Overdue (most late first), then
+        dated items by Due Date, then undated ones; ties by id.
+        """
+        overdue = "(done_at IS NULL AND due_date < :today)"
+        conditions = ["merged_into IS NULL"]
+        match status:
+            case "open":
+                conditions.append("done_at IS NULL")
+            case "overdue":
+                conditions.append(overdue)
+            case "done":
+                conditions.append("done_at IS NOT NULL")
+        if due_before is not None:
+            conditions.append("due_date < :due_before")  # NULL (undated) never compares true
+
         sources: dict[int, list[StoredSource]] = {}
         for item_id, path, line_no, raw_line, checked in self._conn.execute(
             """
@@ -259,12 +280,16 @@ class Store:
             persons.setdefault(item_id, []).append(person)
         return [
             StoredItem(item_id, kind, tuple(persons.get(item_id, ())), tuple(json.loads(candidates or "[]")),
-                       owner, task, due_phrase, due_date, done_at is not None, tuple(sources.get(item_id, ())))
-            for item_id, kind, candidates, owner, task, due_phrase, due_date, done_at in self._conn.execute(
-                """
-                SELECT id, owner_kind, candidates, written_owner, task, due_phrase, due_date, done_at
-                FROM items WHERE merged_into IS NULL ORDER BY id
-                """
+                       owner, task, due_phrase, due_date, done_at is not None, days_overdue,
+                       tuple(sources.get(item_id, ())))
+            for item_id, kind, candidates, owner, task, due_phrase, due_date, done_at, days_overdue in self._conn.execute(
+                f"""
+                SELECT id, owner_kind, candidates, written_owner, task, due_phrase, due_date, done_at,
+                       CASE WHEN {overdue} THEN CAST(julianday(:today) - julianday(due_date) AS INTEGER) END
+                FROM items WHERE {" AND ".join(conditions)}
+                ORDER BY CASE WHEN {overdue} THEN 0 WHEN due_date IS NOT NULL THEN 1 ELSE 2 END, due_date, id
+                """,
+                {"today": today.isoformat(), "due_before": due_before},
             )
         ]  # fmt: skip
 
