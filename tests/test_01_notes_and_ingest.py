@@ -310,3 +310,67 @@ def test_random_bytes_as_notes_never_crash_the_run_nfr2(harness: Harness) -> Non
 
     assert result.code == 0
     assert result.json["notes_read"] + result.json["malformed"] == 60
+
+
+# --- run integrity and determinism (NFR-2, NFR-3, FR-12) -------------------------
+
+
+def test_database_that_cannot_be_created_fails_with_exit_1_and_writes_nothing_nfr2(harness: Harness) -> None:
+    harness.write("a.md", TEMPLATE_NOTE)
+    missing_dir = harness.notes.parent / "no-such-dir"
+
+    result = harness.ingest(db=missing_dir / "actiontrack.db")
+
+    assert result.code == 1
+    assert result.out == ""
+    assert "database unchanged" in result.err
+    assert not missing_dir.exists()
+
+
+def test_database_path_that_is_a_folder_fails_with_exit_1_nfr2(harness: Harness) -> None:
+    harness.write("a.md", TEMPLATE_NOTE)
+
+    assert harness.ingest(db=harness.notes).code == 1
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can write read-only files")
+def test_failed_ingest_leaves_database_exactly_as_it_was_nfr2(harness: Harness) -> None:
+    harness.write("a.md", TEMPLATE_NOTE)
+    assert harness.ingest().code == 0
+    before = harness.db.read_bytes()
+
+    harness.write("b.md", TEMPLATE_NOTE.replace("kickoff", "weekly"))
+    harness.db.chmod(0o400)  # every write in the run now fails
+    try:
+        result = harness.ingest()
+    finally:
+        harness.db.chmod(0o600)
+
+    assert result.code == 1
+    assert harness.db.read_bytes() == before
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can list any folder")
+def test_unreadable_folder_is_usage_error_fr1(harness: Harness) -> None:
+    harness.notes.chmod(0)
+    try:
+        result = harness.ingest()
+    finally:
+        harness.notes.chmod(0o700)
+
+    assert result.code == 2
+    assert "cannot read folder" in result.err
+
+
+def test_same_folder_gives_identical_report_nfr3(harness: Harness) -> None:
+    for name in ("c.md", "a.md", "b.md"):
+        harness.write(name, TEMPLATE_NOTE)
+    harness.write("z.md", b"")
+    other_db = harness.notes.parent / "other.db"
+
+    first = harness.ingest()
+    again = harness.ingest()  # re-ingest into the same database
+    fresh = harness.ingest(db=other_db)
+
+    assert first.out == again.out == fresh.out
+    assert [n["file"] for n in first.json["notes"]] == ["a.md", "b.md", "c.md"]
