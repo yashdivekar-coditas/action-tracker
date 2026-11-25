@@ -1,0 +1,2486 @@
+ ▐▛███▛█   Claude Code v2.1.332
+▝▜██████▀  Opus 5.5 · Claude Team
+ ▝▝   ▝▝   ~/Desktop/Personal/Ai Session/Action-Tracker
+
+
+⏺ ponytail: its classic.UserPromptSubmit hook was skipped. 
+  "cc-plugin-sec-default" runs first and sent the event on past it.
+
+❯ Hey we are here to build an optimised solution for the our action-tracaker,   
+  lets start with with the work like a senio software developr. and first lets  
+  start with the new repo set up using Yash-divekar creds on github.            
+
+  Ran 1 shell command · 1 failed (ctrl+o to expand)
+
+⏺ Two GitHub accounts are logged in, and I'll run commands as
+  yashdivekar-coditas using its token rather than switching the global active
+  account. Action-Tracker gets its own repo, since the parent Ai Session folder
+  is a git repo that also holds the unrelated Gatepass project. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The name is free and no secrets turned up. Next: git init, a Python
+  .gitignore, the initial commit, then a private repo, pushed.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat >
+      .gitignore <<'EOF'
+      __pycache__/…)
+  ⎿  5b13c80 Initial commit: actiontrack specs, ADRs, glossary and notes fi
+     xture
+     https://github.com/yashdivekar-coditas/action-tracker
+     … +3 lines (ctrl+o to expand)
+  ⎿  Created .gitignore +13
+       1 +__pycache__/                                                   
+       2 +*.py[cod]                                                      
+       3 +.venv/                                                         
+       4 +venv/                                                          
+       5 +.pytest_cache/                                                 
+       6 +*.egg-info/                                                    
+       7 +dist/                                                          
+       8 +build/                                                         
+       9 +*.db                                                           
+      10 +*.sqlite3                                                      
+      11 +.env                                                           
+      12 +.DS_Store                                                      
+      13 +.claude/settings.local.json                                    
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I set up the repo under Yash's account. It's private:
+  https://github.com/yashdivekar-coditas/action-tracker
+
+  - Account: your machine is logged in to two GitHub accounts, and
+    tejas-k-coditas is the active one. I created and pushed as
+    yashdivekar-coditas without switching the active account. I also set this
+    repo to always push with Yash's login, so a plain git push from here goes to
+    the right account.
+  - Separate repo: Action-Tracker/ now has its own git repo on main. The parent
+    Ai Session repo also holds the unrelated Gatepass project, so I kept the two
+    apart.
+  - First commit: the specs, the decision records (ADRs), the glossary and the
+    notes/ test data, plus a standard Python .gitignore. It skips build caches,
+    the local .db database, .env and your local Claude settings. I checked the
+    files for passwords or keys first and found none. The commit has no Claude
+    co-author line.
+
+  The next item in the build queue is docs/specs/01-notes-and-ingest-run.md,
+  written test-first as the project rules require.
+
+  Not done:
+  - Parent repo: Ai Session will now show Action-Tracker/ as a separate repo
+    inside it. If you ever commit there, add Action-Tracker/ to its .gitignore
+    first.
+  - Visibility: I made the repo private because you didn't say which you wanted.
+    Tell me if it should be public.
+
+✻ Brewed for 51s · done Wednesday 10:26 PM
+
+❯ Lets start building the first spec using /mattpocock-skills:implement-spec    
+  docs/specs/01-notes-and-ingest-run.md, like a senior software developer. Try  
+  to follow git hygens with proper branching and atomic commits and bette code  
+  practice. add relavant comments and types whereever possiable. Follow clean   
+  coding practice and optimised code structure.                                 
+
+⏺ Skill(mattpocock-skills:implement-spec)
+  ⎿  Loaded skill
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 01 is a single ticket, so I'll build it myself on an integration branch,
+  test-first, rather than spinning up worktree subagents that would add cost
+  without adding concurrency. Reading the required docs next. · summary
+
+  Ran 2 shell commands · 1 failed (ctrl+o to expand)
+
+⏺ The project needs Python 3.11+, but the system Python is 3.9. Checking for a
+  newer interpreter and looking at the variety of note headers:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Python 3.12 is available through uv. I'll load the tdd skill as the
+  implement-spec flow asks, then build in vertical slices.
+
+⏺ Skill(mattpocock-skills:tdd)
+  ⎿  Loaded skill
+
+⏺ The test seams are already settled in the project docs, so I won't raise them
+  again; I'm checking FRD §6 before branching. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now the integration branch and a Python 3.12 virtualenv:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Slice 1 (red): the project scaffold, the shared test harness, and the first
+  CLI-contract tests.
+
+⏺ Write(pyproject.toml)
+  ⎿  Wrote 24 lines to pyproject.toml
+       1 [build-system]
+       2 requires = ["setuptools>=68"]
+       3 build-backend = "setuptools.build_meta"
+       4 
+       5 [project]
+       6 name = "actiontrack"
+       7 version = "0.1.0"
+       8 description = "Ingest markdown meeting notes, track their action
+          items, and create Gmail drafts for follow-ups."
+       9 requires-python = ">=3.11"
+     … +15 lines (ctrl+o to expand)
+
+⏺ Write(tests/conftest.py)
+  ⎿  Wrote 81 lines to tests/conftest.py
+       1 """Shared test harness (NFR-5).
+       2 
+       3 Every test drives actiontrack through its single seam, `cli.main
+         (argv)`, with a
+       4 temporary notes folder, a temporary `--db` and a pinned `--today
+         `. Tests assert
+       5 only on the exit code, stdout/stderr and the `--json` report.
+       6 """
+       7 
+       8 from __future__ import annotations
+     … +73 lines (ctrl+o to expand)
+
+⏺ Write(tests/test_01_notes_and_ingest.py)
+  ⎿  Wrote 56 lines to tests/test_01_notes_and_ingest.py
+       1 """Spec 01: folder scan, note headers, Malformed Notes and the i
+         ngest run.
+       2 
+       3 Each test names the FR/NFR rule it proves.
+       4 """
+       5 
+       6 from __future__ import annotations
+       7 
+       8 from conftest import Harness
+       9 
+     … +47 lines (ctrl+o to expand)
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && printf
+      '"""actiontrack: track action items from markdown meeting notes."""\n' >
+      src/actiontrac…)
+  ⎿  /Users/coditas/Desktop/Personal/Ai Session/Action-Tracker/src/actiontr
+     ack/cli.py:2: NotImplementedError
+     =========================== short test summary info ==================
+     … +12 lines (ctrl+o to expand)
+  ⎿  Created src/actiontrack/__init__.py +1
+      1 +"""actiontrack: track action items from markdown meeting notes."
+        +""                                                              
+  ⎿  Created src/actiontrack/cli.py +2
+      1 +def main(argv=None):                                            
+      2 +    raise NotImplementedError                                   
+
+⏺ Slice 1 (green): the CLI entry point, global options and exit codes.
+⏺ Write(src/actiontrack/cli.py)
+  ⎿  Added 126 lines, removed 2 lines
+        1 -def main(argv=None):                                          
+        2 -    raise NotImplementedError                                 
+        1 +"""Command-line entry point: subcommands, global options, outp
+          +ut and exit codes.                                            
+        2 +                                                              
+        3 +`main(argv)` is the only seam tests use (NFR-5): it takes the 
+          +argument list and                                             
+        4 +returns the exit code, so the console script and the tests run
+          + the same path.                                               
+        5 +Human output goes to stdout; warnings and report problems go t
+          +o stderr (NFR-6).                                             
+        6 +"""                                                           
+        7 +                                                              
+        8 +from __future__ import annotations                            
+        9 +                                                              
+       10 +import argparse                                               
+       11 +import os                                                     
+       12 +import sys                                                    
+       13 +from collections.abc import Callable, Sequence                
+       14 +from dataclasses import dataclass                             
+       15 +from datetime import date                                     
+       16 +from pathlib import Path                                      
+       17 +                                                              
+       18 +PROG = "actiontrack"                                          
+       19 +                                                              
+       20 +# Exit codes (NFR-6).                                         
+       21 +EXIT_OK = 0                                                   
+       22 +EXIT_FAILED = 1                                               
+       23 +EXIT_USAGE = 2                                                
+       24 +                                                              
+       25 +DEFAULT_DB = Path(".actiontrack.db")                          
+       26 +ENV_DB = "ACTIONTRACK_DB"                                     
+       27 +ENV_TODAY = "ACTIONTRACK_TODAY"                               
+       28 +                                                              
+       29 +                                                              
+       30 +class UsageError(Exception):                                  
+       31 +    """Bad input from the user: reported on stderr with exit c
+          +ode 2."""                                                     
+       32 +                                                              
+       33 +                                                              
+       34 +@dataclass(frozen=True)                                       
+       35 +class GlobalOptions:                                          
+       36 +    """Options shared by every command, resolved from flags, t
+          +hen environment, then defaults."""                            
+       37 +                                                              
+       38 +    db: Path                                                  
+       39 +    config: Path | None                                       
+       40 +    today: date                                               
+       41 +                                                              
+       42 +                                                              
+       43 +def main(argv: Sequence[str] | None = None) -> int:           
+       44 +    """Run actiontrack with `argv` (defaults to `sys.argv[1:]`
+          +) and return the exit code."""                                
+       45 +    parser = _build_parser()                                  
+       46 +    try:                                                      
+       47 +        args = parser.parse_args(argv)                        
+       48 +    except SystemExit as exc:  # argparse exits on --help (0) 
+          +and on bad arguments (2)                                      
+       49 +        return exc.code if isinstance(exc.code, int) else EXIT
+          +_USAGE                                                        
+       50 +                                                              
+       51 +    try:                                                      
+       52 +        options = _resolve_global_options(args)               
+       53 +        handler: Callable[[argparse.Namespace, GlobalOptions],
+          + int] = args.handler                                          
+       54 +        return handler(args, options)                         
+       55 +    except UsageError as exc:                                 
+       56 +        _error(str(exc))                                      
+       57 +        return EXIT_USAGE                                     
+       58 +                                                              
+       59 +                                                              
+       60 +# --- argument parsing ---------------------------------------
+          +----------------------                                        
+       61 +                                                              
+       62 +                                                              
+       63 +def _build_parser() -> argparse.ArgumentParser:               
+       64 +    parser = argparse.ArgumentParser(                         
+       65 +        prog=PROG,                                            
+       66 +        description="Track action items from markdown meeting 
+          +notes and draft follow-ups.",                                 
+       67 +    )                                                         
+       68 +    commands = parser.add_subparsers(title="commands", metavar
+          +="<command>", required=True)                                  
+       69 +                                                              
+       70 +    ingest = commands.add_parser(                             
+       71 +        "ingest",                                             
+       72 +        parents=[_global_options_parser()],                   
+       73 +        help="read every .md Meeting Note in a folder",       
+       74 +        description="Read every .md Meeting Note directly insi
+          +de FOLDER and print a report.",                               
+       75 +    )                                                         
+       76 +    ingest.add_argument("folder", type=Path, help="folder of m
+          +arkdown Meeting Notes (not scanned recursively)")             
+       77 +    ingest.add_argument("--json", action="store_true", help="p
+          +rint the report as one JSON object")                          
+       78 +    ingest.set_defaults(handler=_cmd_ingest)                  
+       79 +                                                              
+       80 +    return parser                                             
+       81 +                                                              
+       82 +                                                              
+       83 +def _global_options_parser() -> argparse.ArgumentParser:      
+       84 +    """Options every command accepts; an explicit flag beats i
+          +ts environment variable."""                                   
+       85 +    parent = argparse.ArgumentParser(add_help=False)          
+       86 +    parent.add_argument(                                      
+       87 +        "--db",                                               
+       88 +        type=Path,                                            
+       89 +        help=f"database file (default: ${ENV_DB} or ./{DEFAULT
+          +_DB})",                                                       
+       90 +    )                                                         
+       91 +    parent.add_argument("--config", type=Path, help="path to a
+          +ctiontrack.toml")                                             
+       92 +    # Hidden: pins "today" for tests and demos (NFR-3).       
+       93 +    parent.add_argument("--today", help=argparse.SUPPRESS)    
+       94 +    return parent                                             
+       95 +                                                              
+       96 +                                                              
+       97 +def _resolve_global_options(args: argparse.Namespace) -> Globa
+          +lOptions:                                                     
+       98 +    db = args.db or Path(os.environ.get(ENV_DB) or DEFAULT_DB)
+       99 +    today_text: str | None = args.today or os.environ.get(ENV_
+          +TODAY)                                                        
+      100 +    return GlobalOptions(db=db, config=args.config, today=_par
+          +se_today(today_text))                                         
+      101 +                                                              
+      102 +                                                              
+      103 +def _parse_today(text: str | None) -> date:                   
+      104 +    if not text:                                              
+      105 +        return date.today()                                   
+      106 +    try:                                                      
+      107 +        return date.fromisoformat(text)                       
+      108 +    except ValueError:                                        
+      109 +        raise UsageError(f"--today must be a YYYY-MM-DD date, 
+          +got {text!r}") from None                                      
+      110 +                                                              
+      111 +                                                              
+      112 +# --- commands -----------------------------------------------
+          +----------------------                                        
+      113 +                                                              
+      114 +                                                              
+      115 +def _cmd_ingest(args: argparse.Namespace, options: GlobalOptio
+          +ns) -> int:                                                   
+      116 +    folder: Path = args.folder                                
+      117 +    if not folder.is_dir():                                   
+      118 +        raise UsageError(f"folder not found: {folder}")       
+      119 +    return EXIT_OK                                            
+      120 +                                                              
+      121 +                                                              
+      122 +# --- output -------------------------------------------------
+          +----------------------                                        
+      123 +                                                              
+      124 +                                                              
+      125 +def _error(message: str) -> None:                             
+      126 +    print(f"{PROG}: error: {message}", file=sys.stderr)       
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice 2 (red): folder scan, the report contract, the store and the database
+  location.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat >>
+      tests/test_01_notes_and_ingest.py <<'EOF'…)
+  ⎿  /Users/coditas/.local/share/uv/python/cpython-3.12.13-macos-x86_64-non
+     e/lib/python3.12/pathlib.py:840: FileNotFoundError
+     =========================== short test summary info ==================
+     … +14 lines (ctrl+o to expand)
+  ⎿  Updated tests/test_01_notes_and_ingest.py +85
+       54 
+       55      assert result.code == 2
+       56      assert "--today" in result.err
+       57 +                                                              
+       58 +                                                              
+       59 +# --- folder scan and report (FR-1, FR-12) -------------------
+          +---------------------                                         
+       60 +                                                              
+       61 +REPORT_KEYS = {                                               
+       62 +    "notes_read",                                             
+       63 +    "malformed",                                              
+       64 +    "ignored",                                                
+       65 +    "items_new",                                              
+       66 +    "items_merged",                                           
+       67 +    "items_done",                                             
+       68 +    "malformed_notes",                                        
+       69 +    "ambiguous_owners",                                       
+       70 +    "unknown_owners",                                         
+       71 +    "unassigned_items",                                       
+       72 +    "unresolved_due_phrases",                                 
+       73 +}                                                             
+       74 +                                                              
+       75 +                                                              
+       76 +def test_ingest_reads_a_template_note_and_reports_stable_keys_
+          +fr12_nfr6(harness: Harness) -> None:                          
+       77 +    harness.write("2026-09-01-kickoff.md", TEMPLATE_NOTE)     
+       78 +                                                              
+       79 +    result = harness.ingest()                                 
+       80 +                                                              
+       81 +    assert result.code == 0                                   
+       82 +    report = result.json                                      
+       83 +    assert REPORT_KEYS <= report.keys()                       
+       84 +    assert (report["notes_read"], report["malformed"], report[
+          +"ignored"]) == (1, 0, 0)                                      
+       85 +    assert report["malformed_notes"] == []                    
+       86 +                                                              
+       87 +                                                              
+       88 +def test_only_md_files_directly_inside_folder_are_read_fr1(har
+          +ness: Harness) -> None:                                       
+       89 +    harness.write("a.md", TEMPLATE_NOTE)                      
+       90 +    harness.write("B.MD", TEMPLATE_NOTE)  # extension is case-
+          +insensitive                                                   
+       91 +    harness.write("agenda.txt", "not a note")                 
+       92 +    harness.write("draft.md.bak", "not a note")               
+       93 +    (harness.notes / "archive").mkdir()                       
+     … +48 lines (ctrl+o to expand)
+
+⏺ Slice 2 (green): store, ingest, a first notes parser and the report output.
+
+⏺ Write(src/actiontrack/store.py)
+  ⎿  Wrote 114 lines to src/actiontrack/store.py
+       1 """All SQLite access. No other module knows SQL (NFR-9).
+       2 
+       3 The schema is versioned with `PRAGMA user_version`; each entry i
+         n `_MIGRATIONS`
+       4 moves the database up one version. A whole ingest run happens in
+         side one
+       5 `transaction()`, so any failure leaves the database as it was (N
+         FR-2).
+       6 """
+       7 
+     … +107 lines (ctrl+o to expand)
+
+⏺ Write(src/actiontrack/ingest.py)
+  ⎿  Wrote 103 lines to src/actiontrack/ingest.py
+       1 """Run one ingest over a folder: scan, parse, store, and build t
+         he report (FR-1, FR-12).
+       2 
+       3 Per-note failures never escape: they become Malformed Notes (NFR
+         -2). Store
+       4 failures abort the run, and `store.transaction` rolls everything
+          back.
+       5 """
+       6 
+       7 from __future__ import annotations
+     … +96 lines (ctrl+o to expand)
+
+⏺ Write(src/actiontrack/notes.py)
+  ⎿  Wrote 71 lines to src/actiontrack/notes.py
+       1 """Turn a file's bytes into a Meeting Note or a Malformed reason
+          (FR-2, FR-3).
+       2 
+       3 Pure: no I/O beyond the bytes it is given (NFR-9).
+       4 """
+       5 
+       6 from __future__ import annotations
+       7 
+       8 import re
+       9 from dataclasses import dataclass
+     … +62 lines (ctrl+o to expand)
+
+⏺ Write(src/actiontrack/dates.py)
+  ⎿  Wrote 16 lines to src/actiontrack/dates.py
+      1 """Date parsing. Meeting Dates here; Due Date resolution arrives 
+        in spec 03 (FR-2, FR-8).
+      2 
+      3 Pure and locale-independent, so results never depend on the machi
+        ne (NFR-3).
+      4 """
+      5 
+      6 from __future__ import annotations
+      7 
+      8 from datetime import date
+     … +8 lines (ctrl+o to expand)
+
+⏺ The title logic I just wrote picks the last # Meeting: line when there are
+  several, but the spec says the first one wins. Fixing that now, then wiring
+  the CLI:
+
+⏺ Update(src/actiontrack/notes.py)
+  ⎿  Added 8 lines, removed 5 lines
+      52  def _template_header(lines: list[str]) -> dict[str, str]:
+      53      """`# Meeting: <title>`, `Date:` and `Attendees:` lines bef
+          ore the first `##` heading."""
+      54      fields: dict[str, str] = {}
+      55 -    titles: list[str] = []                                     
+      55 +    meeting_title: str | None = None                           
+      56 +    first_heading: str | None = None                           
+      57      for line in lines:
+      58          if line.startswith("##"):
+      59              break
+      60          if match := _TITLE_MEETING.match(line):
+      60 -            titles.insert(0, match[1])  # a `# Meeting:` line b
+         -eats any earlier plain heading                                 
+      61 +            meeting_title = meeting_title if meeting_title is n
+         +ot None else match[1]                                          
+      62          elif match := _TITLE_ANY.match(line):
+      62 -            titles.append(match[1])                            
+      63 +            first_heading = first_heading if first_heading is n
+         +ot None else match[1]                                          
+      64          elif match := _HEADER_FIELD.match(line):
+      65              fields.setdefault(match[1].lower(), match[2])
+      65 -    if titles:                                                 
+      66 -        fields["title"] = titles[0].strip()                    
+      66 +    # The first `# Meeting:` line wins over any plain `#` headi
+         +ng.                                                            
+      67 +    title = meeting_title if meeting_title is not None else fir
+         +st_heading                                                     
+      68 +    if title is not None:                                      
+      69 +        fields["title"] = title.strip()                        
+      70      return fields
+      71 
+      72 
+
+⏺ Update(src/actiontrack/cli.py)
+  ⎿  Added 35 lines
+      116      folder: Path = args.folder
+      117      if not folder.is_dir():
+      118          raise UsageError(f"folder not found: {folder}")
+      119 +    try:                                                      
+      120 +        report = ingest.run(folder, options.db)               
+      121 +    except ingest.FolderError as exc:                         
+      122 +        raise UsageError(str(exc)) from exc                   
+      123 +    except store.StoreError as exc:                           
+      124 +        _error(f"ingest failed, database unchanged: {exc}")   
+      125 +        return EXIT_FAILED                                    
+      126 +                                                              
+      127 +    if args.json:                                             
+      128 +        print(json.dumps(report.to_dict(), ensure_ascii=False,
+          + indent=2))                                                   
+      129 +    else:                                                     
+      130 +        _print_ingest_report(report)                          
+      131 +    _warn_ingest_problems(report)                             
+      132      return EXIT_OK
+      133 
+      134 
+      135  # --- output -------------------------------------------------
+           ----------------------
+      136 
+      137 
+      138 +def _print_ingest_report(report: ingest.IngestReport) -> None:
+      139 +    print(                                                    
+      140 +        f"Ingested {_plural(report.notes_read, 'Meeting Note')
+          +}; "                                                          
+      141 +        f"skipped {_plural(report.malformed, 'Malformed Note')
+          +}; "                                                          
+      142 +        f"ignored {_plural(report.ignored, 'non-markdown file'
+          +)}."                                                          
+      143 +    )                                                         
+      144 +    print(                                                    
+      145 +        f"Action Items: {report.items_new} new, "             
+      146 +        f"{report.items_merged} merged as Duplicates, {report.
+          +items_done} newly Done."                                      
+      147 +    )                                                         
+      148 +                                                              
+      149 +                                                              
+      150 +def _warn_ingest_problems(report: ingest.IngestReport) -> None
+          +:                                                             
+      151 +    """Report problems go to stderr in both output modes, so s
+          +tdout stays pipeable (NFR-6)."""                              
+      152 +    for entry in report.malformed_notes:                      
+      153 +        print(f"Malformed Note: {entry.file}: {entry.reason}",
+          + file=sys.stderr)                                             
+      154 +                                                              
+      155 +                                                              
+      156 +def _plural(count: int, noun: str) -> str:                    
+      157 +    return f"{count} {noun}" if count == 1 else f"{count} {nou
+          +n}s"                                                          
+      158 +                                                              
+      159 +                                                              
+      160  def _error(message: str) -> None:
+      161      print(f"{PROG}: error: {message}", file=sys.stderr)
+
+⏺ Update(src/actiontrack/cli.py)
+  ⎿  Added 3 lines
+       8  from __future__ import annotations
+       9 
+      10  import argparse
+      11 +import json                                                    
+      12  import os
+      13  import sys
+      14  from collections.abc import Callable, Sequence
+     ...
+      16  from datetime import date
+      17  from pathlib import Path
+      18 
+      19 +from actiontrack import ingest, store                          
+      20 +                                                               
+      21  PROG = "actiontrack"
+      22 
+      23  # Exit codes (NFR-6).
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ The current report hides the parsed header fields, so I'm adding a notes list
+  to the --json output and documenting it in FR-12 to cover the header variants.
+  · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  =========================== short test summary info ==================
+     ==========
+     FAILED tests/test_01_notes_and_ingest.py::test_ingest_reads_a_template
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated tests/test_01_notes_and_ingest.py +85
+       5 
+       6  from __future__ import annotations
+       7 
+       8 +import pytest                                                  
+       9 +                                                               
+      10  from conftest import Harness
+      11 
+      12  TEMPLATE_NOTE = """\
+     ...
+      67      "items_new",
+      68      "items_merged",
+      69      "items_done",
+      70 +    "notes",                                                   
+      71      "malformed_notes",
+      72      "ambiguous_owners",
+      73      "unknown_owners",
+     ...
+      142      assert harness.ingest().code == 0
+      143 
+      144      assert harness.db.stat().st_mode & 0o777 == 0o600
+      145 +                                                              
+      146 +                                                              
+      147 +# --- note headers (FR-2, NFR-8) -----------------------------
+          +---------------------                                         
+      148 +                                                              
+      149 +                                                              
+      150 +def ingested_note(harness: Harness, name: str, content: str | 
+          +bytes) -> dict:                                               
+      151 +    """Write one note, ingest the folder and return that note'
+          +s entry from the report."""                                   
+      152 +    harness.write(name, content)                              
+      153 +    result = harness.ingest()                                 
+      154 +    assert result.code == 0, result.err                       
+      155 +    (entry,) = [n for n in result.json["notes"] if n["file"] =
+          += name]                                                       
+      156 +    return entry                                              
+      157 +                                                              
+      158 +                                                              
+      159 +def test_template_header_gives_title_date_and_attendees_fr2(ha
+          +rness: Harness) -> None:                                      
+      160 +    note = ingested_note(harness, "kickoff.md", TEMPLATE_NOTE)
+      161 +                                                              
+      162 +    assert note == {                                          
+      163 +        "file": "kickoff.md",                                 
+      164 +        "title": "Quote portal kickoff",                      
+      165 +        "meeting_date": "2026-09-01",                         
+      166 +        "attendees": ["Priya Nair", "Rahul Mehta"],           
+     … +60 lines (ctrl+o to expand)
+
+⏺ Slice 3 (green): YAML front-matter, all Meeting Date formats, BOM handling,
+  title fallback, and the notes list in the report.
+
+⏺ Write(src/actiontrack/dates.py)
+  ⎿  Added 38 lines, removed 4 lines
+       1  """Date parsing. Meeting Dates here; Due Date resolution arrive
+          s in spec 03 (FR-2, FR-8).
+       2 
+       3 -Pure and locale-independent, so results never depend on the mac
+         -hine (NFR-3).                                                  
+       3 +Pure and locale-independent (English month names are spelled ou
+         +t here rather                                                  
+       4 +than taken from `calendar`), so results never depend on the mac
+         +hine (NFR-3).                                                  
+       5  """
+       6 
+       7  from __future__ import annotations
+       8 
+       9 +import re                                                      
+      10  from datetime import date
+      11 
+      12 +_MONTH_NAMES = (                                               
+      13 +    "january", "february", "march", "april", "may", "june",    
+      14 +    "july", "august", "september", "october", "november", "dece
+         +mber",                                                         
+      15 +)  # fmt: skip                                                 
+      16 +# Full names and three-letter abbreviations: "september" and "s
+         +ep" -> 9.                                                      
+      17 +_MONTHS: dict[str, int] = {                                    
+      18 +    key: number                                                
+      19 +    for number, name in enumerate(_MONTH_NAMES, start=1)       
+      20 +    for key in (name, name[:3])                                
+      21 +}                                                              
+      22 
+      23 +# FR-2: a leading weekday ("Monday, ") is ignored, not checked 
+         +against the date.                                              
+      24 +_WEEKDAY_PREFIX = re.compile(                                  
+      25 +    r"^(?:mon|tue|wed|thu|fri|sat|sun)(?:day|sday|nesday|rsday|
+         +urday)?,?\s+",                                                 
+      26 +    re.IGNORECASE,                                             
+      27 +)                                                              
+      28 +_ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")           
+      29 +_DAY_MONTH_YEAR = re.compile(r"^(\d{1,2})\s+([a-z]+)\s+(\d{4})$
+         +", re.IGNORECASE)                                              
+      30 +                                                               
+      31 +                                                               
+      32  def parse_meeting_date(text: str) -> date | None:
+      12 -    """Parse a Meeting Date as written in a note header; `None`
+         - if it can't be resolved."""                                   
+      33 +    """Parse a Meeting Date as written in a note header; `None`
+         + if it can't be resolved.                                      
+      34 +                                                               
+      35 +    Accepts `2026-09-01`, `9 September 2026`, `9 Sep 2026` and 
+         +`Monday, 14 September 2026`.                                   
+      36 +    """                                                        
+      37 +    text = _WEEKDAY_PREFIX.sub("", text.strip(), count=1)      
+      38 +    if match := _ISO_DATE.match(text):                         
+      39 +        year, month, day = int(match[1]), int(match[2]), int(ma
+         +tch[3])                                                        
+      40 +    elif match := _DAY_MONTH_YEAR.match(text):                 
+      41 +        month_number = _MONTHS.get(match[2].lower())           
+      42 +        if month_number is None:                               
+      43 +            return None                                        
+      44 +        year, month, day = int(match[3]), month_number, int(mat
+         +ch[1])                                                         
+      45 +    else:                                                      
+      46 +        return None                                            
+      47      try:
+      14 -        return date.fromisoformat(text.strip())                
+      15 -    except ValueError:                                         
+      48 +        return date(year, month, day)                          
+      49 +    except ValueError:  # e.g. 31 February                     
+      50          return None
+
+⏺ Write(src/actiontrack/notes.py)
+  ⎿  Added 44 lines, removed 8 lines
+       1  """Turn a file's bytes into a Meeting Note or a Malformed reaso
+          n (FR-2, FR-3).
+       2 
+       3  Pure: no I/O beyond the bytes it is given (NFR-9).
+       4 +                                                               
+       5 +Two header styles are understood:                              
+       6 +- YAML front-matter, only when the first line is `---`. Just th
+         +e `key: value` and                                             
+       7 +  `key: [a, b]` forms are supported, which covers `title`, `dat
+         +e` and `attendees`                                             
+       8 +  without a YAML library (NFR-7).                              
+       9 +- The house template: the first `# Meeting:` line (else the fir
+         +st `#` heading) is the                                         
+      10 +  title, and `Date:` / `Attendees:` lines are read anywhere bef
+         +ore the first `##`.                                            
+      11  """
+      12 
+      13  from __future__ import annotations
+     ...
+      15  import re
+      16  from dataclasses import dataclass
+      17  from datetime import date
+      18 +from pathlib import PurePath                                   
+      19 
+      20  from actiontrack import dates
+      21 
+     ...
+      36      reason: str
+      37 
+      38 
+      39 +_FRONT_MATTER_FENCE = "---"                                    
+      40 +_KEY_VALUE = re.compile(r"^\s*([A-Za-z_]+)\s*:\s*(.*?)\s*$")   
+      41  _TITLE_MEETING = re.compile(r"^#\s+Meeting:\s*(.*)$", re.IGNORE
+          CASE)
+      42  _TITLE_ANY = re.compile(r"^#\s+(.*)$")
+      33 -_HEADER_FIELD = re.compile(r"^\s*(date|attendees)\s*:\s*(.*)$",
+         - re.IGNORECASE)                                                
+      43 +_HEADER_FIELDS = frozenset({"date", "attendees"})              
+      44 
+      45 
+      46  def parse(data: bytes, file_name: str) -> Note | Malformed:
+      37 -    """Parse one note. `file_name` is the title fallback when t
+         -he note has none."""                                           
+      38 -    text = data.decode("utf-8")                                
+      39 -    fields = _template_header(text.splitlines())               
+      47 +    """Parse one note. `file_name` (without `.md`) is the title
+         + fallback when the note has none."""                           
+      48 +    text = data.decode("utf-8-sig")  # NFR-8: a UTF-8 byte-orde
+         +r mark is accepted                                             
+      49 +    lines = text.splitlines()                                  
+      50 +    if lines and lines[0].strip() == _FRONT_MATTER_FENCE:      
+      51 +        fields = _front_matter(lines[1:])                      
+      52 +    else:                                                      
+      53 +        fields = _template_header(lines)                       
+      54 
+      55      raw_date = fields.get("date", "")
+      56      meeting_date = dates.parse_meeting_date(raw_date)
+      57      assert meeting_date is not None
+      58 
+      59      return Note(
+      46 -        title=fields.get("title") or file_name,                
+      60 +        title=fields.get("title") or PurePath(file_name).stem, 
+      61          meeting_date=meeting_date,
+      62          attendees=_split_names(fields.get("attendees", "")),
+      63      )
+      64 
+      65 
+      66 +def _front_matter(lines: list[str]) -> dict[str, str]:         
+      67 +    """`key: value` pairs up to the closing `---` (or the end, 
+         +if it is never closed)."""                                     
+      68 +    fields: dict[str, str] = {}                                
+      69 +    for line in lines:                                         
+      70 +        if line.strip() == _FRONT_MATTER_FENCE:                
+      71 +            break                                              
+      72 +        if match := _KEY_VALUE.match(line):                    
+      73 +            fields.setdefault(match[1].lower(), _unquote(match[
+         +2]))                                                           
+      74 +    return fields                                              
+      75 +                                                               
+      76 +                                                               
+      77  def _template_header(lines: list[str]) -> dict[str, str]:
+      53 -    """`# Meeting: <title>`, `Date:` and `Attendees:` lines bef
+         -ore the first `##` heading."""                                 
+      78 +    """Title, `Date:` and `Attendees:` from the lines before th
+         +e first `##` heading."""                                       
+      79      fields: dict[str, str] = {}
+      80      meeting_title: str | None = None
+      81      first_heading: str | None = None
+     ...
+      86              meeting_title = meeting_title if meeting_title is n
+          ot None else match[1]
+      87          elif match := _TITLE_ANY.match(line):
+      88              first_heading = first_heading if first_heading is n
+          ot None else match[1]
+      64 -        elif match := _HEADER_FIELD.match(line):               
+      89 +        elif (match := _KEY_VALUE.match(line)) and match[1].low
+         +er() in _HEADER_FIELDS:                                        
+      90              fields.setdefault(match[1].lower(), match[2])
+      91      # The first `# Meeting:` line wins over any plain `#` headi
+          ng.
+      92      title = meeting_title if meeting_title is not None else fir
+          st_heading
+     ...
+       95      return fields
+       96 
+       97 
+       98 +def _unquote(value: str) -> str:                              
+       99 +    if len(value) >= 2 and value[0] == value[-1] and value[0] 
+          +in "'\"":                                                     
+      100 +        return value[1:-1]                                    
+      101 +    return value                                              
+      102 +                                                              
+      103 +                                                              
+      104  def _split_names(value: str) -> tuple[str, ...]:
+       74 -    return tuple(name.strip() for name in value.split(",") if 
+          -name.strip())                                                 
+      105 +    """Attendees from `a, b` or `[a, b]`, trimmed, blanks drop
+          +ped."""                                                       
+      106 +    value = value.strip()                                     
+      107 +    if value.startswith("[") and value.endswith("]"):         
+      108 +        value = value[1:-1]                                   
+      109 +    names = (_unquote(name.strip()) for name in value.split(",
+          +"))                                                           
+      110 +    return tuple(name for name in names if name)              
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  ........................
+        [100%]
+     24 passed in 0.37s
+  ⎿  Updated src/actiontrack/ingest.py +23 -2
+      27      reason: str
+      28 
+      29 
+      30 +@dataclass(frozen=True)                                        
+      31 +class IngestedNote:                                            
+      32 +    """A Meeting Note read this run, with the header it was sto
+         +red with."""                                                   
+      33 +                                                               
+      34 +    file: str                                                  
+      35 +    note: notes.Note                                           
+      36 +                                                               
+      37 +    def to_dict(self) -> dict[str, Any]:                       
+      38 +        return {                                               
+      39 +            "file": self.file,                                 
+      40 +            "title": self.note.title,                          
+      41 +            "meeting_date": self.note.meeting_date.isoformat(),
+      42 +            "attendees": list(self.note.attendees),            
+      43 +        }                                                      
+      44 +                                                               
+      45 +                                                               
+      46  @dataclass
+      47  class IngestReport:
+      48      """The result of one ingest run.
+     ...
+      51      Item counts and the owner/due-phrase lists are filled by la
+          ter specs.
+      52      """
+      53 
+      38 -    notes_read: int = 0                                        
+      54      ignored: int = 0
+      55      items_new: int = 0
+      56      items_merged: int = 0
+      57      items_done: int = 0
+      58 +    ingested_notes: list[IngestedNote] = field(default_factory=
+         +list)                                                          
+      59      malformed_notes: list[MalformedNote] = field(default_factor
+          y=list)
+      60      ambiguous_owners: list[dict[str, Any]] = field(default_fact
+          ory=list)
+      61      unknown_owners: list[dict[str, Any]] = field(default_factor
+          y=list)
+      62      unassigned_items: list[dict[str, Any]] = field(default_fact
+          ory=list)
+      63      unresolved_due_phrases: list[dict[str, Any]] = field(defaul
+          t_factory=list)
+      64 
+      65 +    @property                                                  
+      66 +    def notes_read(self) -> int:                               
+      67 +        return len(self.ingested_notes)                        
+     … +19 lines (ctrl+o to expand)
+
+⏺ Green. Now FR-12 gets the new notes key in the same commit:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && sed -i
+      '' \
+       -e '47s/.*/- Title falls back to the file name without `.md`
+      (`2026-09-23-standup…)
+  ⎿   docs/frd.md                       |  5 ++-
+      src/actiontrack/dates.py          | 42 +++++++++++++++++--
+      src/actiontrack/ingest.py         | 25 +++++++++++-
+     … +22 lines (ctrl+o to expand)
+  ⎿  Updated docs/frd.md +3 -2
+      44  ```
+      45 
+      46  - Meeting Date formats accepted: `2026-09-01`, `9 September 202
+          6`, `Monday, 14 September 2026`, and `9 Sep 2026`. A leading we
+          ekday is ignored.
+      47 -- Title falls back to the file name when absent.               
+      47 +- Title falls back to the file name without `.md` (`2026-09-23-
+         +standup.md` → `2026-09-23-standup`) when absent.               
+      48  - Attendees are optional; a note without them is still valid.
+      49 
+      50  ### FR-3 Malformed Notes
+     ...
+      126  ### FR-12 Ingest report and exit codes
+      127  After every run, print:
+      128  - counts: notes read, notes skipped as Malformed, files ignore
+           d, items new, items merged as Duplicates, items newly Done;
+      129 +- each Meeting Note read, with the header it was stored with (
+          +title, Meeting Date, Attendees);                              
+      130  - each Malformed Note with its reason (FR-3);
+      131  - each Ambiguous Owner (written name, candidates, note), Unkno
+           wn Owner, and Unassigned item;
+      132  - each unresolved Due Phrase.
+      133 
+      133 -Exit `0` whenever the run completes, Malformed Notes included.
+          - Exit `2` for usage errors (missing folder, bad arguments). Wi
+          -th `--json`, print the same report as one JSON object.        
+      134 +Exit `0` whenever the run completes, Malformed Notes included.
+          + Exit `2` for usage errors (missing folder, bad arguments). Ex
+          +it `1` if the database fails; the run is rolled back. With `--
+          +json`, print the same report as one JSON object with keys `not
+          +es_read`, `malformed`, `ignored`, `items_new`, `items_merged`,
+          + `items_done`, `notes` (`file`, `title`, `meeting_date`, `atte
+          +ndees`), `malformed_notes` (`file`, `reason`), `ambiguous_owne
+          +rs`, `unknown_owners`, `unassigned_items` and `unresolved_due_
+          +phrases`. Keys may be added, never renamed (NFR-6). Problems s
+          +uch as Malformed Notes are also written to stderr.            
+      135 
+      136  ---
+      137 
+
+⏺ The new FRD bullet says human output prints every note read, but that list
+  only goes in --json, so I'm removing the bullet:
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && sed -i
+      '' '/^- each Meeting Note read, with the header it was stored with/d'
+      docs/frd.md && se…)
+  ⎿  1
+     24 passed in 0.40s
+     1479f1f feat(notes): parse YAML front-matter and every Meeting Date fo
+     rmat
+  ⎿  Updated docs/frd.md +1 -2
+      126  ### FR-12 Ingest report and exit codes
+      127  After every run, print:
+      128  - counts: notes read, notes skipped as Malformed, files ignore
+           d, items new, items merged as Duplicates, items newly Done;
+      129 -- each Meeting Note read, with the header it was stored with (
+          -title, Meeting Date, Attendees);                              
+      129  - each Malformed Note with its reason (FR-3);
+      130  - each Ambiguous Owner (written name, candidates, note), Unkno
+           wn Owner, and Unassigned item;
+      131  - each unresolved Due Phrase.
+      132 
+      134 -Exit `0` whenever the run completes, Malformed Notes included.
+          - Exit `2` for usage errors (missing folder, bad arguments). Ex
+          -it `1` if the database fails; the run is rolled back. With `--
+          -json`, print the same report as one JSON object with keys `not
+          -es_read`, `malformed`, `ignored`, `items_new`, `items_merged`,
+          - `items_done`, `notes` (`file`, `title`, `meeting_date`, `atte
+          -ndees`), `malformed_notes` (`file`, `reason`), `ambiguous_owne
+          -rs`, `unknown_owners`, `unassigned_items` and `unresolved_due_
+          -phrases`. Keys may be added, never renamed (NFR-6). Problems s
+          -uch as Malformed Notes are also written to stderr.            
+      133 +Exit `0` whenever the run completes, Malformed Notes included.
+          + Exit `2` for usage errors (missing folder, bad arguments). Ex
+          +it `1` if the database fails; the run is rolled back. With `--
+          +json`, print the same report as one JSON object with keys `not
+          +es_read`, `malformed`, `ignored`, `items_new`, `items_merged`,
+          + `items_done`, `notes` (each Meeting Note read: `file`, `title
+          +`, `meeting_date`, `attendees`; JSON only), `malformed_notes` 
+          +(`file`, `reason`), `ambiguous_owners`, `unknown_owners`, `una
+          +ssigned_items` and `unresolved_due_phrases`. Keys may be added
+          +, never renamed (NFR-6). Problems such as Malformed Notes are 
+          +also written to stderr.                                       
+      134 
+      135  ---
+      136 
+⏺ Slice 4 (red): each Malformed reason, plus NFR-2 robustness with a seeded fuzz
+  test.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  >       assert malformed_reasons(result.json)["latin1.md"] == "not tex
+     t"
+     E       assert "unreadable: ...inuation byte" == 'not text'
+     … +27 lines (ctrl+o to expand)
+  ⎿  Updated tests/test_01_notes_and_ingest.py +87 -1
+       5 
+       6  from __future__ import annotations
+       7 
+       8 +import os                                                      
+       9 +import random                                                  
+      10 +                                                               
+      11  import pytest
+      12 
+      10 -from conftest import Harness                                   
+      13 +from conftest import Harness, malformed_reasons                
+      14 
+      15  TEMPLATE_NOTE = """\
+      16  # Meeting: Quote portal kickoff
+     ...
+      227      note = ingested_note(harness, "bom.md", b"\xef\xbb\xbf" +
+           TEMPLATE_NOTE.encode("utf-8"))
+      228 
+      229      assert note["title"] == "Quote portal kickoff"
+      230 +                                                              
+      231 +                                                              
+      232 +# --- Malformed Notes (FR-3, NFR-2) --------------------------
+          +---------------------                                         
+      233 +                                                              
+      234 +PNG_BYTES = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\
+          +x10"                                                          
+      235 +                                                              
+      236 +                                                              
+      237 +@pytest.mark.parametrize(                                     
+      238 +    ("content", "reason"),                                    
+      239 +    [                                                         
+      240 +        (PNG_BYTES, "not text"),                              
+      241 +        (b"# Meeting: X\x00\nDate: 2026-09-01\n", "not text"),
+          +  # NUL bytes: binary, even if valid UTF-8                    
+      242 +        (b"", "empty"),                                       
+      243 +        (b" \n\t\n  \n", "empty"),                            
+      244 +        (b"\xef\xbb\xbf\n", "empty"),                         
+      245 +        (b"- [ ] Sam to chase the vendor\n\nno header, no date
+          +\n", "no meeting date"),                                      
+      246 +        (b"# Meeting: X\nDate:\n", "no meeting date"),        
+      247 +        (b"# Meeting: X\n\n## Notes\nDate: 2026-09-01\n", "no 
+          +meeting date"),  # after the first ##                         
+      248 +        (b"---\ntitle: X\n---\n", "no meeting date"),         
+      249 +        (b"# Meeting: X\nDate: sometime last week\n", "unresol
+          +vable meeting date: sometime last week"),                     
+      250 +        (b"# Meeting: X\nDate: 31 February 2026\n", "unresolva
+          +ble meeting date: 31 February 2026"),                         
+      251 +        (b"---\ndate: 2026-13-01\n---\n", "unresolvable meetin
+          +g date: 2026-13-01"),                                         
+      252 +    ],                                                        
+      253 +)                                                             
+     … +59 lines (ctrl+o to expand)
+
+⏺ Red for the right reasons. The fuzz test already passes because ingest catches
+  per-note errors, but the reasons are wrong. Slice 4 (green):
+
+⏺ Update(src/actiontrack/notes.py)
+  ⎿  Added 14 lines, removed 3 lines
+      45 
+      46  def parse(data: bytes, file_name: str) -> Note | Malformed:
+      47      """Parse one note. `file_name` (without `.md`) is the title
+           fallback when the note has none."""
+      48 -    text = data.decode("utf-8-sig")  # NFR-8: a UTF-8 byte-orde
+         -r mark is accepted                                             
+      48 +    try:                                                       
+      49 +        text = data.decode("utf-8-sig")  # NFR-8: a UTF-8 byte-
+         +order mark is accepted                                         
+      50 +    except UnicodeDecodeError:                                 
+      51 +        return Malformed(NOT_TEXT)                             
+      52 +    if "\x00" in text:  # valid UTF-8 can still be binary      
+      53 +        return Malformed(NOT_TEXT)                             
+      54 +    if not text.strip():                                       
+      55 +        return Malformed(EMPTY)                                
+      56 +                                                               
+      57      lines = text.splitlines()
+      50 -    if lines and lines[0].strip() == _FRONT_MATTER_FENCE:      
+      58 +    if lines[0].strip() == _FRONT_MATTER_FENCE:                
+      59          fields = _front_matter(lines[1:])
+      60      else:
+      61          fields = _template_header(lines)
+      62 
+      63      raw_date = fields.get("date", "")
+      64 +    if not raw_date:                                           
+      65 +        return Malformed(NO_MEETING_DATE)                      
+      66      meeting_date = dates.parse_meeting_date(raw_date)
+      57 -    assert meeting_date is not None                            
+      67 +    if meeting_date is None:                                   
+      68 +        return Malformed(f"{UNRESOLVABLE_MEETING_DATE}: {raw_da
+         +te}")                                                          
+      69 
+      70      return Note(
+      71          title=fields.get("title") or PurePath(file_name).stem,
+
+⏺ Update(src/actiontrack/notes.py)
+  ⎿  Added 6 lines
+      36      reason: str
+      37 
+      38 
+      39 +# Malformed reasons (FR-3). `ingest` adds "unreadable: <error>"
+         + for anything unexpected.                                      
+      40 +NOT_TEXT = "not text"                                          
+      41 +EMPTY = "empty"                                                
+      42 +NO_MEETING_DATE = "no meeting date"                            
+      43 +UNRESOLVABLE_MEETING_DATE = "unresolvable meeting date"        
+      44 +                                                               
+      45  _FRONT_MATTER_FENCE = "---"
+      46  _KEY_VALUE = re.compile(r"^\s*([A-Za-z_]+)\s*:\s*(.*?)\s*$")
+      47  _TITLE_MEETING = re.compile(r"^#\s+Meeting:\s*(.*)$", re.IGNORE
+          CASE)
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice 5 (red): database failures (exit 1 with nothing written), an unreadable
+  folder, determinism, and the sample notes/ fixture.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat >>
+      tests/test_01_notes_and_ingest.py <<'EOF'…)
+  ⎿  ...............................................
+        [100%]
+     47 passed in 1.13s
+  ⎿  Updated tests/test_01_notes_and_ingest.py +64
+      310 
+      311      assert result.code == 0
+      312      assert result.json["notes_read"] + result.json["malformed"
+           ] == 60
+      313 +                                                              
+      314 +                                                              
+      315 +# --- run integrity and determinism (NFR-2, NFR-3, FR-12) ----
+          +---------------------                                         
+      316 +                                                              
+      317 +                                                              
+      318 +def test_database_that_cannot_be_created_fails_with_exit_1_and
+          +_writes_nothing_nfr2(harness: Harness) -> None:               
+      319 +    harness.write("a.md", TEMPLATE_NOTE)                      
+      320 +    missing_dir = harness.notes.parent / "no-such-dir"        
+      321 +                                                              
+      322 +    result = harness.ingest(db=missing_dir / "actiontrack.db")
+      323 +                                                              
+      324 +    assert result.code == 1                                   
+      325 +    assert result.out == ""                                   
+      326 +    assert "database unchanged" in result.err                 
+      327 +    assert not missing_dir.exists()                           
+      328 +                                                              
+      329 +                                                              
+      330 +def test_database_path_that_is_a_folder_fails_with_exit_1_nfr2
+          +(harness: Harness) -> None:                                   
+      331 +    harness.write("a.md", TEMPLATE_NOTE)                      
+      332 +                                                              
+      333 +    assert harness.ingest(db=harness.notes).code == 1         
+      334 +                                                              
+      335 +                                                              
+      336 +@pytest.mark.skipif(os.geteuid() == 0, reason="root can write 
+          +read-only files")                                             
+      337 +def test_failed_ingest_leaves_database_exactly_as_it_was_nfr2(
+          +harness: Harness) -> None:                                    
+      338 +    harness.write("a.md", TEMPLATE_NOTE)                      
+      339 +    assert harness.ingest().code == 0                         
+      340 +    before = harness.db.read_bytes()                          
+      341 +                                                              
+      342 +    harness.write("b.md", TEMPLATE_NOTE.replace("kickoff", "we
+          +ekly"))                                                       
+      343 +    harness.db.chmod(0o400)  # every write in the run now fail
+          +s                                                             
+      344 +    try:                                                      
+      345 +        result = harness.ingest()                             
+      346 +    finally:                                                  
+      347 +        harness.db.chmod(0o600)                               
+      348 +                                                              
+      349 +    assert result.code == 1                                   
+     … +27 lines (ctrl+o to expand)
+  ⎿  Created tests/test_sample_notes.py +36
+       1 +"""End-to-end: ingest the shared sample `notes/` folder (FRD §6
+         +, NFR-2, NFR-5).                                               
+       2 +                                                               
+       3 +`notes/` is read-only test data; only the temp database is writ
+         +ten.                                                           
+       4 +"""                                                            
+       5 +                                                               
+       6 +from __future__ import annotations                             
+       7 +                                                               
+       8 +from conftest import SAMPLE_NOTES, Harness, malformed_reasons  
+       9 +                                                               
+      10 +                                                               
+      11 +def test_sample_notes_folder_fr1_fr3_nfr2(harness: Harness) -> 
+         +None:                                                          
+      12 +    result = harness.ingest(SAMPLE_NOTES)                      
+      13 +                                                               
+      14 +    assert result.code == 0                                    
+      15 +    report = result.json                                       
+      16 +    assert (report["notes_read"], report["malformed"], report["
+         +ignored"]) == (31, 4, 1)                                       
+      17 +    assert malformed_reasons(report) == {                      
+      18 +        "2026-09-09-notes-final-v2.md": "empty",               
+      19 +        "2026-10-03-sales-pipeline.md": "unresolvable meeting d
+         +ate: sometime last week",                                      
+      20 +        "scratch.md": "not text",                              
+      21 +        "untitled.md": "no meeting date",                      
+      22 +    }                                                          
+      23 +                                                               
+      24 +                                                               
+      25 +def test_sample_yaml_and_long_date_headers_fr2(harness: Harness
+         +) -> None:                                                     
+      26 +    notes = {n["file"]: n for n in harness.ingest(SAMPLE_NOTES)
+         +.json["notes"]}                                                
+      27 +                                                               
+      28 +    assert notes["2026-09-16-standup.md"] == {                 
+      29 +        "file": "2026-09-16-standup.md",                       
+      30 +        "title": "Team standup",                               
+      31 +        "meeting_date": "2026-09-16",                          
+      32 +        "attendees": ["Anita Desai", "Lena Fischer", "Meera Iye
+         +r"],                                                           
+      33 +    }                                                          
+      34 +    assert notes["2026-09-09-qa-standup.md"]["meeting_date"] ==
+         + "2026-09-09"                                                  
+      35 +    assert notes["2026-09-14-onboarding-flow-design.md"]["meeti
+         +ng_date"] == "2026-09-14"                                      
+      36 +    assert notes["2026-09-23-standup.md"]["attendees"] == []   
+
+⏺ These tests passed on the first run since the existing store and ingest code
+  already covers these cases. I'm confirming notes/ is untouched, then
+  committing. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Smoke-testing the installed console script against the real fixture:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Works end to end. Step 7 of the skill is a code review of the integration
+  branch:
+
+⏺ Skill(code-review)
+  ⎿  Running in the background
+
+⏺ The code review is running in the background. Once it finishes, I'll fix what
+  it finds, set spec 01 to Status: done and finish the branch.
+
+✻ Cogitated for 6m 49s · done Wednesday 10:37 PM
+
+⏺ Agent "/code-review main...feat/01-notes-and-ingest-run" finished · 1m 48s
+
+⏺ The review found 10 issues. I'll fix the 7 that are real bugs in what spec 01
+  builds, each test-first in its own commit. I'm skipping three:
+
+  - YAML block-list and ;-separated Attendees: the spec limits support to key: 
+    value, key: [a, b] and comma splitting.
+  - Tues / Sept date spellings: FR-2 lists the exact formats accepted.
+  - Stale rows for notes that become Malformed: re-ingest behaviour belongs to
+    spec 06.
+
+  Fix 1: an unclosed front-matter fence swallows the whole note.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat >>
+      tests/test_01_notes_and_ingest.py <<'EOF'…)
+  ⎿  !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!
+     !!!!!!!!!!
+     1 error in 0.30s
+  ⎿  Created tests/test_01_notes_and_ingest.py +8
+      1 +                                                                
+      2 +                                                                
+      3 +def test_unclosed_front_matter_falls_back_to_template_header_fr2
+        +_nfr2(harness: Harness) -> None:                                
+      4 +    content = "---\n# Meeting: Foo\nDate: 2026-09-01\n\n## Notes
+        +\nTitle: bar\ndate: someday\n"                                  
+      5 +                                                                
+      6 +    note = ingested_note(harness, "n.md", content)              
+      7 +                                                                
+      8 +    assert (note["title"], note["meeting_date"]) == ("Foo", "202
+        +6-09-01")                                                       
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ The test file now holds only the new test, and git diff printed nothing.
+  Checking what happened before going further:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The working tree switched to main while the feature branch was in use, likely
+  from the background review agent, so my append left a stray untracked file.
+  I'm checking that the branch and its commits are still intact. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All five commits are safe on feat/01-notes-and-ingest-run. The only stray file
+  is the test I just appended, so I'll remove it, switch back and re-add the
+  test:
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && rm
+      tests/test_01_notes_and_ingest.py && git switch -q
+      feat/01-notes-and-ingest-run && git stat…)
+  ⎿  FAILED tests/test_01_notes_and_ingest.py::test_unclosed_front_matter_f
+     alls_back_to_template_header_fr2_nfr2
+     1 failed, 47 passed in 1.54s
+  ⎿  Updated docs/frd.md +2 -2
+  ⎿  Created pyproject.toml +24
+  ⎿  Created src/actiontrack/__init__.py +1
+  ⎿  Created src/actiontrack/cli.py +164
+  ⎿  Created src/actiontrack/dates.py +50
+  ⎿  … +6 files changed
+     src/actiontrack/ingest.py
+     src/actiontrack/notes.py
+     src/actiontrack/store.py
+     +3 more
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Red. Fix: front-matter counts only when it has a closing fence.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  48 passed in 0.91s
+     263:| `2026-09-16-standup.md` (YAML front-matter) | Valid; items inges
+     ted |
+  ⎿  Updated src/actiontrack/notes.py +14 -9
+      3  Pure: no I/O beyond the bytes it is given (NFR-9).
+      4 
+      5  Two header styles are understood:
+      6 -- YAML front-matter, only when the first line is `---`. Just the
+        - `key: value` and                                               
+      6 +- YAML front-matter, only when the first line is `---` and a clo
+        +sing `---` follows. Just the `key: value` and                   
+      7    `key: [a, b]` forms are supported, which covers `title`, `date
+         ` and `attendees`
+      8    without a YAML library (NFR-7).
+      9  - The house template: the first `# Meeting:` line (else the firs
+         t `#` heading) is the
+     ...
+      61          return Malformed(EMPTY)
+      62 
+      63      lines = text.splitlines()
+      64 -    if lines[0].strip() == _FRONT_MATTER_FENCE:                
+      65 -        fields = _front_matter(lines[1:])                      
+      66 -    else:                                                      
+      64 +    fields = _front_matter(lines)                              
+      65 +    if fields is None:                                         
+      66          fields = _template_header(lines)
+      67 
+      68      raw_date = fields.get("date", "")
+     ...
+      79      )
+      80 
+      81 
+      83 -def _front_matter(lines: list[str]) -> dict[str, str]:         
+      84 -    """`key: value` pairs up to the closing `---` (or the end, 
+         -if it is never closed)."""                                     
+      82 +def _front_matter(lines: list[str]) -> dict[str, str] | None:  
+      83 +    """`key: value` pairs between an opening `---` first line a
+         +nd its closing `---`.                                          
+      84 +                                                               
+      85 +    `None` when the note has no front-matter, or never closes i
+         +t: reading on would                                            
+      86 +    take body lines as header fields, so the template header is
+         + used instead.                                                 
+      87 +    """                                                        
+      88 +    if lines[0].strip() != _FRONT_MATTER_FENCE:                
+      89 +        return None                                            
+      90      fields: dict[str, str] = {}
+      86 -    for line in lines:                                         
+      91 +    for line in lines[1:]:                                     
+      92          if line.strip() == _FRONT_MATTER_FENCE:
+      88 -            break                                              
+      93 +            return fields                                      
+      94          if match := _KEY_VALUE.match(line):
+      95              fields.setdefault(match[1].lower(), _unquote(match[
+          2]))
+     … +5 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I'm injecting a database error through Store.upsert_note to really trigger the
+  rollback, and renaming the read-only test to match what it covers. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)  ⎿  49 passed in 1.10s
+     1 passed, 48 deselected in 0.33s
+     49 passed in 0.99s
+  ⎿  Updated tests/test_01_notes_and_ingest.py +30 -1
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ The mutation check passed when it should have failed, so my mutation was
+  wrong. Looking at what the sed actually changed:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The sed pattern had the wrong indentation, so the mutation never applied.
+  Running it properly:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Still passing, so comparing the file bytes isn't sensitive enough. Debugging
+  directly:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The bytes differ only across a one-second gap, and this test ran within the
+  same second, so the first write stored identical values. I'll change a.md's
+  title before the failing run so its first write is a real change. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  1 failed, 48 deselected in 0.48s
+     49 passed in 0.83s
+  ⎿  Updated tests/test_01_notes_and_ingest.py +1
+      352          original(self, path, note)
+      353 
+      354      monkeypatch.setattr(store.Store, "upsert_note", fail_on_se
+           cond_write)
+      355 +    harness.write("a.md", TEMPLATE_NOTE.replace("kickoff", "re
+          +tro"))  # first write changes a row                           
+      356      harness.write("b.md", TEMPLATE_NOTE.replace("kickoff", "we
+           ekly"))
+      357 
+      358      result = harness.ingest()
+
+⏺ The test now fails when the run commits per write and passes with the real
+  single transaction. Committing:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Fix 3: refuse a database created by a newer actiontrack, and stop a failed
+  rollback from escaping as a traceback.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat >>
+      tests/test_01_notes_and_ingest.py <<'EOF'…)
+  ⎿  50 passed in 1.04s
+  ⎿  Updated tests/test_01_notes_and_ingest.py +14
+      412      note = ingested_note(harness, "n.md", content)
+      413 
+      414      assert (note["title"], note["meeting_date"]) == ("Foo", "2
+           026-09-01")
+      415 +                                                              
+      416 +                                                              
+      417 +def test_database_from_a_newer_actiontrack_is_refused_nfr2(har
+          +ness: Harness) -> None:                                       
+      418 +    harness.write("a.md", TEMPLATE_NOTE)                      
+      419 +    # Setup only: stand in for a database written by a future 
+          +schema version.                                               
+      420 +    with sqlite3.connect(harness.db) as conn:                 
+      421 +        conn.execute("PRAGMA user_version = 99")              
+      422 +    before = harness.db.read_bytes()                          
+      423 +                                                              
+      424 +    result = harness.ingest()                                 
+      425 +                                                              
+      426 +    assert result.code == 1                                   
+      427 +    assert "newer" in result.err                              
+      428 +    assert harness.db.read_bytes() == before                  
+
+⏺ It passed for the wrong reason: pytest's temp path contains the test name,
+  which includes "newer". Tightening the assertion to the exact message:
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && sed -i
+      '' 's/    assert "newer" in result.err/    assert "created by a newer
+      actiontrack (sche…)
+  ⎿  1 failed, 49 passed in 0.89s
+  ⎿  Updated tests/test_01_notes_and_ingest.py +1 -1
+      424      result = harness.ingest()
+      425 
+      426      assert result.code == 1
+      427 -    assert "newer" in result.err                              
+      427 +    assert "created by a newer actiontrack (schema 99" in resu
+          +lt.err                                                        
+      428      assert harness.db.read_bytes() == before
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  50 passed in 0.96s
+     3666082 fix(store): refuse newer schemas and never let a failed rollba
+     ck escape
+  ⎿  Updated src/actiontrack/store.py +10 -3
+      11  import os
+      12  import sqlite3
+      13  from collections.abc import Iterator
+      14 -from contextlib import contextmanager                          
+      14 +from contextlib import contextmanager, suppress                
+      15  from datetime import datetime, timezone
+      16  from pathlib import Path
+      17 
+     ...
+      103 
+      104  def _migrate(conn: sqlite3.Connection) -> None:
+      105      version: int = conn.execute("PRAGMA user_version").fetchon
+           e()[0]
+      106 +    if version > len(_MIGRATIONS):                            
+      107 +        raise sqlite3.DatabaseError(                          
+      108 +            f"created by a newer actiontrack (schema {version}
+          +, this version knows {len(_MIGRATIONS)})"                     
+      109 +        )                                                     
+      110      for target, statements in enumerate(_MIGRATIONS[version:],
+            start=version + 1):
+      111          for statement in statements:
+      112              conn.execute(statement)
+     ...
+      114 
+      115 
+      116  def _rollback(conn: sqlite3.Connection) -> None:
+      113 -    if conn.in_transaction:                                   
+      114 -        conn.execute("ROLLBACK")                              
+      117 +    # A failed ROLLBACK must not mask the original error; SQLi
+          +te discards the                                               
+      118 +    # uncommitted transaction anyway when the connection close
+          +s.                                                            
+      119 +    with suppress(sqlite3.Error):                             
+      120 +        if conn.in_transaction:                               
+      121 +            conn.execute("ROLLBACK")                          
+
+⏺ Fix 4: the database file is counted as an ignored file when it sits inside the
+  notes folder, as it does for actiontrack ingest ..
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat >>
+      tests/test_01_notes_and_ingest.py <<'EOF'…)
+  ⎿  1 failed, 50 passed in 1.08s
+  ⎿  Updated tests/test_01_notes_and_ingest.py +11
+      426      assert result.code == 1
+      427      assert "created by a newer actiontrack (schema 99" in resu
+           lt.err
+      428      assert harness.db.read_bytes() == before
+      429 +                                                              
+      430 +                                                              
+      431 +def test_database_inside_the_notes_folder_is_not_counted_as_ig
+          +nored_nfr3(harness: Harness) -> None:                         
+      432 +    harness.write("a.md", TEMPLATE_NOTE)                      
+      433 +    db_in_folder = harness.notes / ".actiontrack.db"          
+      434 +                                                              
+      435 +    first = harness.ingest(db=db_in_folder)                   
+      436 +    second = harness.ingest(db=db_in_folder)                  
+      437 +                                                              
+      438 +    assert first.json["ignored"] == second.json["ignored"] == 
+          +0                                                             
+      439 +    assert first.out == second.out                            
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  51 passed in 1.00s
+     395f686 fix(ingest): don't count the database file as an ignored note
+     file
+  ⎿  Updated src/actiontrack/ingest.py +18 -4
+      93      Raises `FolderError` if the folder can't be listed (before 
+          the database is touched)
+      94      and `store.StoreError` if the database fails (the run is ro
+          lled back).
+      95      """
+      96 -    files = _scan(folder)                                      
+      96 +    files = _scan(folder, skip=db_path)                        
+      97      report = IngestReport()
+      98      with store.transaction(db_path) as db:
+      99          for path in files:
+     ...
+      109      return report
+      110 
+      111 
+      112 -def _scan(folder: Path) -> list[Path]:                        
+      113 -    """Files directly inside `folder`, sorted by name so ids a
+          -nd reports are deterministic (NFR-3)."""                      
+      112 +def _scan(folder: Path, skip: Path) -> list[Path]:            
+      113 +    """Files directly inside `folder`, sorted by name so ids a
+          +nd reports are deterministic (NFR-3).                         
+      114 +                                                              
+      115 +    `skip` is the database: with `ingest .` it lives in the no
+          +tes folder and would                                          
+      116 +    otherwise be counted as ignored from the second run on.   
+      117 +    """                                                       
+      118      try:
+      115 -        return sorted((p for p in folder.iterdir() if p.is_fil
+          -e()), key=lambda p: p.name)                                   
+      119 +        return sorted(                                        
+      120 +            (p for p in folder.iterdir() if p.is_file() and no
+          +t _same_file(p, skip)),                                       
+      121 +            key=lambda p: p.name,                             
+      122 +        )                                                     
+      123      except OSError as exc:
+      124          raise FolderError(f"cannot read folder {folder}: {exc.
+           strerror or exc}") from exc
+      125 
+      126 
+      127 +def _same_file(path: Path, other: Path) -> bool:              
+      128 +    try:                                                      
+      129 +        return path.samefile(other)                           
+      130 +    except OSError:  # `other` doesn't exist yet              
+      131 +        return False                                          
+      132 +                                                              
+      133 +                                                              
+      134  def _parse(path: Path) -> notes.Note | notes.Malformed:
+      135      try:
+      136          return notes.parse(path.read_bytes(), path.name)
+
+⏺ Fix 5 (CLI): --today must be strictly YYYY-MM-DD, an empty value is a usage
+  error, and note text echoed to stderr can't send terminal escape sequences.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  FAILED tests/test_01_notes_and_ingest.py::test_invalid_today_is_usage_
+     error_fr12[]
+     FAILED tests/test_01_notes_and_ingest.py::test_invalid_today_is_usage_
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated tests/test_01_notes_and_ingest.py +13 -2
+      56      assert harness.run("frobnicate", global_options=False).code
+           == 2
+      57 
+      58 
+      59 -def test_invalid_today_is_usage_error_fr12(harness: Harness) ->
+         - None:                                                         
+      60 -    result = harness.run("ingest", str(harness.notes), "--today
+         -", "15/10/2026", global_options=False)                         
+      59 +@pytest.mark.parametrize("today", ["15/10/2026", "", "20261015"
+         +, "2026-W42-1"])                                               
+      60 +def test_invalid_today_is_usage_error_fr12(harness: Harness, to
+         +day: str) -> None:                                             
+      61 +    result = harness.run("ingest", str(harness.notes), "--today
+         +", today, global_options=False)                                
+      62 
+      63      assert result.code == 2
+      64      assert "--today" in result.err
+     ...
+      438 
+      439      assert first.json["ignored"] == second.json["ignored"] ==
+           0
+      440      assert first.out == second.out
+      441 +                                                              
+      442 +                                                              
+      443 +def test_note_text_in_warnings_cannot_drive_the_terminal_nfr4(
+          +harness: Harness) -> None:                                    
+      444 +    harness.write("evil.md", "# Meeting: X\nDate: \x1b[2Jsoon\
+          +n")                                                           
+      445 +                                                              
+      446 +    result = harness.ingest()                                 
+      447 +                                                              
+      448 +    assert "\x1b" not in result.err                           
+      449 +    assert "Malformed Note: evil.md: unresolvable meeting date
+          +: \\x1b[2Jsoon" in result.err                                 
+      450 +    assert malformed_reasons(result.json)["evil.md"] == "unres
+          +olvable meeting date: \x1b[2Jsoon"                            
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  55 passed in 0.98s
+  ⎿  Updated src/actiontrack/cli.py +18 -7
+      10  import argparse
+      11  import json
+      12  import os
+      13 +import re                                                      
+      14  import sys
+      15  from collections.abc import Callable, Sequence
+      16  from dataclasses import dataclass
+     ...
+      29  DEFAULT_DB = Path(".actiontrack.db")
+      30  ENV_DB = "ACTIONTRACK_DB"
+      31  ENV_TODAY = "ACTIONTRACK_TODAY"
+      32 +_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")                    
+      33 
+      34 
+      35  class UsageError(Exception):
+     ...
+      101 
+      102  def _resolve_global_options(args: argparse.Namespace) -> Globa
+           lOptions:
+      103      db = args.db or Path(os.environ.get(ENV_DB) or DEFAULT_DB)
+      102 -    today_text: str | None = args.today or os.environ.get(ENV_
+          -TODAY)                                                        
+      104 +    # An explicit `--today ''` is an error, but an empty envir
+          +onment variable counts as unset.                              
+      105 +    today_text: str | None = args.today if args.today is not N
+          +one else os.environ.get(ENV_TODAY) or None                    
+      106      return GlobalOptions(db=db, config=args.config, today=_par
+           se_today(today_text))
+      107 
+      108 
+      109  def _parse_today(text: str | None) -> date:
+      107 -    if not text:                                              
+      110 +    if text is None:                                          
+      111          return date.today()
+      109 -    try:                                                      
+      110 -        return date.fromisoformat(text)                       
+      111 -    except ValueError:                                        
+      112 -        raise UsageError(f"--today must be a YYYY-MM-DD date, 
+          -got {text!r}") from None                                      
+      112 +    # fromisoformat alone also accepts forms like 20261015 and
+          + 2026-W42-1.                                                  
+      113 +    if _ISO_DAY.fullmatch(text):                              
+      114 +        try:                                                  
+      115 +            return date.fromisoformat(text)                   
+      116 +        except ValueError:                                    
+      117 +            pass                                              
+      118 +    raise UsageError(f"--today must be a YYYY-MM-DD date, got 
+          +{text!r}")                                                    
+      119 
+      120 
+     … +14 lines (ctrl+o to expand)
+
+⏺ Python's \d also matches non-ASCII digits, so I'm adding re.ASCII to the
+  pattern before committing:
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && sed -i
+      '' 's/^_ISO_DAY = re.compile(r"\\d{4}-\\d{2}-\\d{2}")$/_ISO_DAY =
+      re.compile(r"\\d{4}-\…)
+  ⎿  32:_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
+     55 passed in 1.02s
+     ac3d28e fix(cli): strict --today and escaped note text in warnings
+  ⎿  Updated src/actiontrack/cli.py +1 -1
+      29  DEFAULT_DB = Path(".actiontrack.db")
+      30  ENV_DB = "ACTIONTRACK_DB"
+      31  ENV_TODAY = "ACTIONTRACK_TODAY"
+      32 -_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")                    
+      32 +_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)          
+      33 
+      34 
+      35  class UsageError(Exception):
+
+⏺ All seven fixes are in. Next, step 8 of the skill: close the ticket the way
+  this tracker does, with Status: done on the spec.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && sed -i
+      '' '3s/^Status: ready-for-agent$/Status: done/'
+      docs/specs/01-notes-and-ingest-run.md &…)
+  ⎿  Status: done
+     55 passed in 0.94s
+     e650dd5 docs(specs): mark spec 01 notes and ingest run as done
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated docs/specs/01-notes-and-ingest-run.md +1 -1
+      1  # 01 — Notes: folder scan, note headers and Malformed Notes
+      2 
+      3 -Status: ready-for-agent                                         
+      3 +Status: done                                                    
+      4  Blocked by: none
+      5  Requirements: FR-1, FR-2, FR-3, FR-12, NFR-2, NFR-3, NFR-4, NFR-
+         6, NFR-7, NFR-8
+      6 
+
+⏺ Spec 01 is built on feat/01-notes-and-ingest-run in 11 commits, and all 55
+  tests pass. The branch is local only; I haven't pushed it or opened a PR.
+
+  What works now: actiontrack ingest <folder> reads every .md file directly
+  inside the folder. Both header styles work (# Meeting: and YAML front-matter),
+  as do all four Meeting Date formats and files with a UTF-8 byte-order mark.
+  Run on the sample notes/ folder, it reads 31 notes, skips the 4 Malformed
+  Notes with the right reasons, ignores 1 non-markdown file and exits 0. The
+  database file is readable by you only, and a failed run leaves it exactly as
+  it was.
+
+  How I worked:
+  - No subagents: the spec has a single ticket, so instead of separate worktree
+    agents I built it myself, one test then the code to pass it, one slice at a
+    time. There were no worktrees to clean up.
+  - Commits: one per slice, each citing the FR/NFR ids. Every test goes through
+    the CLI entry point, as the project rules require, with one exception. The
+    rollback test injects a database error on the second write, because no note
+    content can make SQLite fail mid-run. A comment in the test explains why.
+  - One addition to the spec: the --json report gains a notes list (file, title,
+    meeting_date, attendees). Without it, title fallback and missing Attendees
+    couldn't be seen through the CLI at all. NFR-6 allows adding keys, and I
+    documented it in FR-12 in docs/frd.md.
+
+  Code review: it reported 10 issues. I fixed 7, each with a test that failed
+  first, in its own commit:
+  - A note that opens --- but never closes it was read entirely as front-matter,
+    so body lines overrode its title.
+  - The old rollback test never reached a rollback. I checked the new one
+    catches the bug: if the run commits after each write, it fails.
+  - A database from a newer version of actiontrack is now refused, and an error
+    during rollback no longer surfaces as a traceback.
+  - actiontrack ingest . counted its own database file as an ignored file from
+    the second run on.
+  - --today '' silently used the real date, and forms like 20261015 were
+    accepted.
+  - Note text shown on stderr could contain terminal control characters; it's
+    now escaped.
+
+  Not fixed: YAML block-list and ;-separated Attendees, and the Tues/Sept date
+  spellings, are outside the formats spec 01 and FR-2 list. Notes that become
+  Malformed keep their old database row, which is re-ingest behaviour for spec
+  06.
+
+  Branch switch during review: the review agent switched your working tree to
+  main partway through. No commits were lost and I switched back. If you see
+  that again during reviews, that's the cause.
+
+  The mcp dependency isn't in pyproject.toml yet; it arrives with spec 09.
+
+  Next up: specs 02 (action item extraction) and 04 (configuration) are now
+  unblocked and independent, so they can be built in parallel. Tell me when you
+  want feat/01-notes-and-ingest-run pushed or a PR opened.
+
+✻ Baked for 12m 24s · done Wednesday 10:42 PM
+❯ can we build a specs/index.md to show the dependecy graph or table to work on 
+  parralel session.                                                             
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ I'm putting the index on its own branch off main, since it doesn't depend on
+  spec 01, and it will show a command for the live status rather than copying
+  each spec's Status line. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      switch -q -c docs/specs-index main && git branch --show-current && sed -n
+      '5,7p' CLAUDE.md)
+  ⎿  docs/specs-index
+     ## Read before working
+     - `docs/specs/NN-*.md`: the build queue. Each spec has a `Status:` lin
+     … +4 lines (ctrl+o to expand)
+  ⎿  Updated docs/frd.md +2 -2
+  ⎿  Updated docs/specs/01-notes-and-ingest-run.md +1 -1
+  ⎿  Deleted pyproject.toml -24
+  ⎿  Deleted src/actiontrack/__init__.py -1
+  ⎿  Deleted src/actiontrack/cli.py -175
+  ⎿  … +7 files changed
+     src/actiontrack/dates.py
+     src/actiontrack/ingest.py
+     src/actiontrack/notes.py
+     +4 more
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Write(docs/specs/index.md)
+  ⎿  Wrote 70 lines to docs/specs/index.md
+      1 # Spec index: dependencies and parallel work
+      2 
+      3 Which specs can be built at the same time, and which files they c
+        ollide on. The source of truth for blockers is each spec's `Block
+        ed by:` line, and for progress its `Status:` line. This page does
+         not copy statuses, so it never goes stale.
+      4 
+      5 **Live frontier.** Each spec's status and blockers:
+      6 
+      7 ```bash
+     … +63 lines (ctrl+o to expand)
+
+⏺ Step 2's spec claim via a committed Status: in-progress won't be visible to
+  sessions starting from main, so I'm making the branch itself the claim
+  instead. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && python3
+      - <<'PY'
+      from pathlib import Path…)
+  ⎿  docs/specs/01-notes-and-ingest-run.md:Status: ready-for-agent
+     docs/specs/01-notes-and-ingest-run.md:Blocked by: none
+     docs/specs/03-due-date-resolution.md:Status: ready-for-agent
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated docs/frd.md +2 -2
+  ⎿  Updated docs/specs/01-notes-and-ingest-run.md +1 -1
+  ⎿  Deleted docs/specs/index.md -70
+  ⎿  Created pyproject.toml +24
+  ⎿  Created src/actiontrack/__init__.py +1
+  ⎿  … +8 files changed
+     src/actiontrack/cli.py
+     src/actiontrack/dates.py
+     src/actiontrack/ingest.py
+     +5 more
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ The frontier command skipped spec 02 in that output. Checking why before I
+  report:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The command works: all nine specs are listed, and the earlier | head -4 just
+  cut the output short. Spec 01 shows done because I'm back on the feature
+  branch.
+
+  I added the index at docs/specs/index.md and committed it on its own branch,
+  docs/specs-index, which starts from main. Your working tree is back on
+  feat/01-notes-and-ingest-run.
+
+  Waves: specs in the same wave don't depend on each other, so each can run in
+  its own session once the earlier waves are merged.
+
+  ┌──────┬────────────────────────────────────┬─────────────────────────────┐
+  │ Wave │               Specs                │          Sessions           │
+  ├──────┼────────────────────────────────────┼─────────────────────────────┤
+  │ 1    │ 01                                 │ done on its branch, not     │
+  │      │                                    │ merged yet                  │
+  ├──────┼────────────────────────────────────┼─────────────────────────────┤
+  │ 2    │ 02 Action Item extraction, 04      │ 2 in parallel               │
+  │      │ Configuration                      │                             │
+  ├──────┼────────────────────────────────────┼─────────────────────────────┤
+  │ 3    │ 03 Due Dates, 05 Owners            │ 2 in parallel               │
+  ├──────┼────────────────────────────────────┼─────────────────────────────┤
+  │ 4    │ 06 Duplicates and re-ingest        │ 1                           │
+  ├──────┼────────────────────────────────────┼─────────────────────────────┤
+  │ 5    │ 07 list, 08 done                   │ 2 in parallel               │
+  ├──────┼────────────────────────────────────┼─────────────────────────────┤
+  │ 6    │ 09 Follow-up Drafts                │ 1 (08 can still be running) │
+  └──────┴────────────────────────────────────┴─────────────────────────────┘
+
+  What else is in the index:
+  - Dependency graph: a diagram built from each spec's Blocked by: line. The
+    slowest chain runs 01 → 02 → 03 or 05 → 06 → 07 → 09, so parallel sessions
+    cut the number of sessions you wait on per wave, not the number of waves.
+  - Live frontier command: the page doesn't copy each spec's status, which would
+    go stale. One grep lists every spec's current Status: and Blocked by:.
+  - Parallel workflow: one git worktree and branch per spec. An existing
+    feat/NN-* branch means that spec is taken, because every session sees every
+    branch. Merge in wave order and run pytest before each merge.
+  - Merge hotspots: the table lists the files most specs touch and how to
+    resolve conflicts in each. The riskiest pair is 03 and 05: both add a
+    database schema migration and fill in report keys.
+  - CLAUDE.md: one new line points new sessions at the index.
+
+  main doesn't have spec 01 yet, so wave 2 sessions would start from a branch
+  without its code or its done status. Merge feat/01-notes-and-ingest-run and
+  docs/specs-index into main first; that's your call. Nothing is pushed yet.
+
+✻ Baked for 1m 19s · done Wednesday 10:45 PM
+
+※ recap: Spec 01 (note ingest) is finished on its own branch, and a spec index for running parallel sessions is on another branch, neither pushed. Next, merge both branches into main so specs 02 and 04 can start in parallel. (turn off recaps in /config)
+
+❯ merge both branches into main and push                                        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Both merged cleanly and all 55 tests pass on main. Pushing as
+  yashdivekar-coditas:
+
+  Pushed to main (ctrl+o to expand)
+
+⏺ I merged both branches into main and pushed it to GitHub as
+  yashdivekar-coditas. All 55 tests pass on the merged main.
+
+  - Merges: I kept a merge commit for each branch, so the history still shows
+    spec 01's commits and the index commit as separate branches. There were no
+    conflicts.
+  - Push: https://github.com/yashdivekar-coditas/action-tracker now has spec 01
+    marked done, docs/specs/index.md, and the new line in CLAUDE.md.
+  - Working tree: now on main, in sync with GitHub.
+
+  Specs 02 and 04 can now start in parallel sessions from main. Each gets its
+  own worktree and branch, as docs/specs/index.md describes.
+
+  I didn't push the two feature branches themselves, since all their commits are
+  already in main. Their local copies are still there and can be deleted with
+  git branch -d feat/01-notes-and-ingest-run docs/specs-index.
+
+✻ Sautéed for 20s · done Wednesday 10:53 PM
+
+※ recap: Building the actiontrack CLI spec by spec: spec 01 is done, and it and the spec index are merged into main and pushed to GitHub. Next, start specs 02 and 04 in parallel sessions from main. (turn off recaps in /config)
+
+❯ lets build on spec 2 and as its not blocked, lets use                         
+  /mattpocock-skills:implement-spec for optimised coding.                       
+
+⏺ Skill(mattpocock-skills:implement-spec)
+  ⎿  Loaded skill
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 02 is a single ticket whose tests all go through ingest and list, so I'll
+  build it test-first on one integration branch rather than split it across
+  parallel agents. I'm pulling up the action-item lines in the fixture next. 
+  · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Several edge cases are visible in the fixture, including a "by" that needs its
+  last occurrence and decoy checkboxes and code blocks. I'm checking what spec
+  03 expects before deciding whether a Due Phrase keeps its "by". · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 03 and FR-8 mean a Due Phrase is stored without its by or due prefix, and
+  the docs conflict on whether bare tomorrow counts, so I'm accepting trailing
+  tomorrow/today/EOD as Due Phrases and recording that in FR-6. Next, the red
+  tracer bullet for Slice A. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Slice A (green): the items module, the schema v2 migration, ingest wiring and
+  the list command.
+
+⏺ Write(src/actiontrack/items.py)
+  ⎿  Wrote 94 lines to src/actiontrack/items.py
+       1 """Find Action Items in a Meeting Note and split each into owner
+          part, task and Due Phrase.
+       2 
+       3 Pure: works on the note's text only (NFR-9). FR-4 (shapes), FR-5
+          (Decoys), FR-6 (split).
+       4 """
+       5 
+       6 from __future__ import annotations
+       7 
+       8 import re
+     … +86 lines (ctrl+o to expand)
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+⏺ Slice B (red): the other shapes, which are nested checkboxes, @name:,
+  Owner/Action/Due tables and ACTION: lines, plus checked boxes becoming Done.
+
+  Ran 1 shell command (ctrl+o to expand)
+⏺ Nested and checked boxes already pass on slice A's code. Now the @name:, table
+  and ACTION: shapes, plus the bare trailing tomorrow / today / EOD:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice C (red): Decoys, meaning lines in blockquotes and in fenced or indented
+  code blocks.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The blockquote test already passes since shapes are anchored at line start,
+  but I'll explicitly skip > lines anyway; the Decoy pass blanks rather than
+  drops lines to preserve numbering and table boundaries. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice D (red): edge cases of the owner / task / Due Phrase split, written as a
+  parametrised rule table.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Three are real gaps: the due … clause, and separators left trailing after a
+  Due Phrase. The rest pass on existing code.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice E: re-ingest idempotency, Done that is never cleared, Malformed Notes
+  storing nothing, and the sample fixture.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Changing the bullet from - to * currently makes the line count as a new item,
+  so the key needs to ignore all checkbox markup, not just the mark. I'm
+  updating it to do that next. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ The fixture smoke run passes, with 115 items stored and 13 already Done;
+  merging duplicates like 73 and 79 is spec 06. Next I'm documenting the three
+  behaviour decisions: bare deadline words, Due Phrases without by/due, and what
+  a normalised line means. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Spec 02 is functionally complete: 98 tests pass. Now the skill's code-review
+  step. Last time the review agent switched the working tree to main, so this
+  time I'm telling it to stay read-only.
+
+⏺ Skill(code-review)
+  ⎿  Running in the background
+
+⏺ The review is running in the background. When it reports, I'll fix the
+  confirmed findings test-first, set spec 02 to Status: done and summarise.
+
+✻ Crunched for 6m 13s · done Wednesday 11:44 PM
+
+⏺ Agent "/code-review main...feat/02-action-item-extractio…" finished · 2m 31s
+
+⏺ Before fixing anything, checking the review left the working tree alone this
+  time:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The working tree is untouched, and I'm fixing 8 of the review's 10 findings in
+  four test-first commits, skipping three that are documented accepted risks or
+  owned by other specs. Next is the first fix, making the Due Phrase and owner
+  values consistent. · summary
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+⏺ Karan to by Friday keeps its task intact, because the by clause just needs a
+  separator; my expected value was wrong, so I'm fixing the test. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Fix 2: regex backtracking. First reproducing the hang the review reported:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The reproduction takes about 46 seconds, and the fix collapses whitespace and
+  finds the last by with a lookahead, so by by Friday still resolves correctly. 
+  · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 102 pass, including the 20,000-space and 20,000-by lines, which now take
+  well under 2 seconds.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 46 s → 0.04 s. Fix 3: fenced blocks indented under list items, line numbers
+  counted on real newlines only, and escaped \| in table cells.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Fix 4: list no longer creates a database file when the path doesn't exist, so
+  list --db typo.db doesn't leave an empty typo.db behind.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All four fixes are in. Last: record the table-cell rule in FR-6 and close the
+  spec.
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 02 is built on feat/02-action-item-extraction in 11 commits, and all 105
+  tests pass. The branch isn't merged into main or pushed yet.
+
+  What works now:
+  - Shapes: checkbox bullets (-, *, +, nested, any indent), @name:,
+    Owner/Action/Due tables (columns in any order or case, anywhere in the
+    note), and ACTION: lines.
+  - Decoys: lines in blockquotes, fenced code (including fences under list
+    items) and indented code are ignored. The sample note's quoted refund,
+    fenced template and HTML-commented line are all absent.
+  - Splitting: each item is split into the owner part as written, the task and
+    the raw Due Phrase. Spec 05 will match owners to people and spec 03 will
+    turn Due Phrases into dates.
+  - Status and re-ingest: a ticked box makes an item Done, and unticking never
+    reopens it. Re-ingesting creates no new items and keeps ids, even if a line
+    moves, is respaced or changes bullet style.
+  - actiontrack list [--json]: shows id, owner, task, due and status, plus every
+    Source line in --json.
+  - Sample run: the notes/ folder gives 115 items, 13 of them already Done.
+    Repeats across notes (the same task in two meetings) aren't merged yet;
+    that's spec 06.
+
+  Three spec decisions I made, all recorded in docs/frd.md and GLOSSARY.md:
+  - Due Phrase form: it is stored without its by/due (by Friday → Friday). That
+    matches the date table spec 03 will resolve against, though the glossary
+    previously said "exactly as written".
+  - Bare deadline words: FR-6 and FRD §6 disagreed. FRD §6 expects ACTION: … 
+    summary tomorrow to have a due date, so a bare trailing tomorrow, today or
+    EOD now counts as a Due Phrase.
+  - Same line: ignoring case, spacing, indent, bullet character and checkbox
+    mark. That's what keeps ids stable when a box is ticked or a line moves.
+
+  Code review: it reported 10 issues. I fixed 8 test-first in four commits:
+  - Regex hang: one line with 20,000 spaces stalled ingest for about 46 seconds
+    while holding the database write lock. It now takes 0.04 seconds.
+  - Table cells: Due cells kept a leading by, and — placeholders were stored as
+    owners and Due Phrases.
+  - Trailing punctuation: by Friday. stored Friday., which spec 03 couldn't
+    resolve.
+  - Decoys: a fenced code block indented under a list item wasn't treated as a
+    Decoy.
+  - Small fixes:
+    - An item could end up with an empty task.
+    - list --db typo.db left an empty database file behind.
+    - Unusual Unicode line breaks shifted line numbers.
+    - An escaped \| split a table cell.
+
+  Not fixed:
+  - Capitalised verbs as owners: Migrate to Postgres still gets owner "Migrate".
+    That's the documented owner heuristic, and spec 05 will report such names
+    as Unknown.
+  - Prose after by: by Friday, per Lena keeps the whole tail as the Due Phrase;
+    spec 03 will list it as unresolved.
+  - Identical lines in one note: they count as one occurrence.
+
+  I built it myself on one branch rather than with worktree agents, because spec
+  02 is a single ticket whose shapes all live in items.py. So there were no
+  worktrees to clean up. The review agent left your working tree alone this
+  time.
+
+  Next, specs 03 and 05 can't both start yet: 05 needs 04. The ready ones are 03
+  (Due Dates) and 04 (Configuration), which can run in parallel. Tell me when
+  you want feat/02-action-item-extraction merged into main and pushed.
+
+✻ Churned for 12m 27s · done Wednesday 11:50 PM
+
+❯ lets merge this features and start working spec 5 using                       
+  /mattpocock-skills:implement-spec                                             
+
+⏺ Merging spec 02 into main first:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 02 is merged locally with all 105 tests passing but not pushed, and spec
+  05 is blocked until spec 04 (Configuration) is built. · summary
+
+⏺ Answered Claude's questions:
+  ⎿  · Spec 05 (Owner resolution) is blocked by spec 04 (Configuration: 
+     actiontrack.toml and the People Roster), which isn't built yet. How should 
+     I proceed? → you will find it in a branch ready try to merge it and start 
+     wokring on top of it
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Parallel sessions have built spec 03 and spec 04 in worktrees (at-03, at-04).
+  Before merging spec 04, I'll check that it's finished and committed:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 04 is committed and clean but branched from the old main before spec 02,
+  and spec 03's worktree has an uncommitted change to docs/frd.md that another
+  session may be using, so I'm leaving that alone and merging only 04. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Both sides added a new function at the same spot, so I'll keep both. First I'm
+  checking whether spec 04 expects list to load the config too:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The spec says list and done never load the config, so the resolution is simply
+  to keep both functions:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 143 tests pass: spec 01–02's 105 plus spec 04's 38. Committing the merge:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 05's blockers (02 and 04) are both done on main. Starting it with
+  implement-spec:
+
+⏺ Skill(mattpocock-skills:implement-spec)
+  ⎿  Loaded skill
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Spec 05 is a single ticket, so I'm building it test-first on its own branch.
+  Since the index flags 03 and 05 as a migration-collision pair, I'm first
+  checking whether spec 03's branch adds a schema migration. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 03 changes record_occurrence's signature without a migration, so I'm
+  keeping spec 05's store change additive to ease the later merge. Next I'm
+  checking the config fixture shape spec 04's tests use. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I'm building spec 05 in four test-first slices, starting with matching against
+  the Attendees, storage and list fields. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Slice A (green): the pure owners module, the item-owners table and list
+  fields.
+
+⏺ Write(src/actiontrack/owners.py)
+  ⎿  Wrote 82 lines to src/actiontrack/owners.py
+       1 """Resolve a written owner part to Persons (FR-7).
+       2 
+       3 Pure: works on the owner part, the meeting's Attendees and the P
+         eople Roster only (NFR-9).
+       4 Unclear owners are never guessed: they become Ambiguous, Unknown
+          or Unassigned.
+       5 """
+       6 
+       7 from __future__ import annotations
+       8 
+     … +74 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 03 resolves dates in the run loop, so I'll resolve owners there too,
+  which keeps the later merge trivial. Store and ingest changes:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Both test failures were my mistakes: lowercase "rahul to" isn't valid under
+  FR-6's capitalised-name grammar, so I'll use RAHUL instead, and the repeated
+  resolve call reused a filename that left the first item in the database. 
+  · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice B (red): the Team words and the Unassigned placeholders.
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Slice C (red): fallback to the People Roster, alias matches, and re-ingest
+  after a roster change.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Slice D (red): the report's owner sections, the list owner column, and the FRD
+  §6 sample rows.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Candidates are sorted alphabetically per FRD §6, while Persons keep the
+  Attendees order shown in the sample fixture. Next I'm implementing the report
+  and output. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Both failing tests are expected behaviour changes, not bugs: the list output
+  now shows resolved owners and candidates are sorted. I'm updating both tests
+  next. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ The two Unknown Owners are from 2026-09-23-standup.md, which has no Attendees
+  line, as FR-7 expects with no roster set. Next I'm checking the FR-12 owner
+  fields in the docs and the spec status, then the review. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Skill(code-review)
+  ⎿  Running in the background
+
+⏺ The code review of feat/05-owner-resolution is running in the background,
+  read-only. When it reports, I'll fix the confirmed findings test-first and
+  summarise spec 05.
+
+✻ Brewed for 7m 14s · done 12:02 AM
+
+⏺ Agent "/code-review main...feat/05-owner-resolution — re…" finished · 1m 29s
+
+⏺ The review found 9 issues. I'll fix 5 of them, in three commits, and skip 4:
+  - Resolved Persons are dropped when a shared item has an unclear name: spec 05
+    says the whole item takes the Ambiguous or Unknown kind.
+  - Owner details go to stderr, not stdout: this is the NFR-6 split, the same as
+    Malformed Notes in spec 01.
+  - Very wide Team owner cell: spec 07 adds column widths.
+  - Done items with unclear owners are reported on every run: that's how the
+    report is meant to list every issue in one pass.
+
+  Fix 1 (red): a duplicated Attendee makes the owner Ambiguous. Also Team & TBD
+  should stay a Team Item, Priya N without a dot should match, and aliases
+  should ignore spacing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The alias-spacing test passed only by accident, since "Lena F." already
+  matched her full name. I'm switching to an alias that can match only as an
+  alias, and then implementing it. · summary
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+⏺ Fix 2: the test harness's write_roster builds TOML in a way that breaks on an
+  apostrophe in a name, and two people with the same first name get the same
+  email.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Fix 3, docs: FR-7 gets the combination rules, and FR-13 gets the new list 
+  --json fields and the owner column labels.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 05 is built on feat/05-owner-resolution in 8 commits, and all 183 tests
+  pass. It isn't merged into main yet.
+
+  Merges first: I merged specs 02 and 04 into main but didn't push. Spec 04 had
+  branched from the old main, which caused one conflict in cli.py: both branches
+  added a function at the same spot, and I kept both. Spec 04's own tests and
+  everything earlier still pass.
+
+  Spec 05 resolves each written owner to one of:
+  - Person: matched against that meeting's Attendees by full name, first name or
+    first name + surname initial (Priya N. → Priya Nair), ignoring case; @anita
+    works too. If no Attendee matches, the People Roster in the config is
+    tried, including aliases.
+  - Shared item: Anita & Rahul, A and B or A, B make one item owned by both
+    people.
+  - Team Item: Team, Everyone or All mean every Attendee. With no Attendees
+    listed, the item is Unassigned.
+  - Ambiguous: a bare Priya when two Priyas attended keeps both as candidates.
+  - Unknown: a name that matches nobody keeps the name as written.
+  - Unassigned: TBD, Someone, ? or no owner at all.
+
+  Fixing the roster and re-ingesting updates owners in place with the same ids.
+  The ingest report lists every Ambiguous, Unknown and Unassigned item with
+  file, line and item id (in --json and as warnings on stderr). list shows the
+  resolved names, or labels like Priya (ambiguous: Priya Nair, Priya Shah),
+  Karan (unknown) and unassigned. Every owner example in FRD §6 checks out
+  against the sample notes.
+
+  Code review: it reported 9 issues. I fixed 5 test-first:
+  - A person listed twice in Attendees made a clear owner Ambiguous, which would
+    have dropped them from follow-ups.
+  - Team & TBD was no longer a Team Item.
+  - Priya N without the dot didn't match, and aliases were sensitive to spacing.
+  - The test helper wrote broken config files for names with an apostrophe.
+  - The new list --json owner fields and owner labels were missing from
+    docs/frd.md.
+
+  Not fixed:
+  - Shared items with one unclear name: in Anita & Karan with Karan unknown,
+    Anita isn't recorded as an owner either. Spec 05 says the whole item takes
+    the Unknown kind.
+  - Where owner problems print: they go to stderr rather than stdout, the same
+    as Malformed Notes.
+  - Wide Team owner cell: a big meeting makes a wide owner cell in list; spec 07
+    handles column widths.
+  - Repeated reports: Done items with unclear owners are reported again on every
+    run.
+
+  Behaviour to know about:
+  - On the sample notes, 2026-09-23-standup.md has no Attendees line, so its
+    Rahul and Sam are Unknown Owners until a roster names them.
+  - A placeholder next to a real name is ignored, so Anita & TBD gives Anita the
+    item. I chose that over losing Anita and recorded it in FR-7.
+
+  Spec 03: its worktree (at-03) still has an uncommitted docs/frd.md change, so
+  I left it alone. When it's merged, expect a small conflict on one line of
+  ingest.py, where both specs extend the same record_occurrence call. I kept
+  spec 05's change separate to make that easy.
+
+  Next: tell me when you want feat/05-owner-resolution merged and main pushed.
+  Spec 06 (Duplicates and re-ingest) can start once 03 is merged too.
+
+✻ Cogitated for 11m 27s · done 12:04 AM
+
+❯ lets merge all the code done in teh session into main                         
+
+  Ran 1 shell command · 1 failed (ctrl+o to expand)
+
+⏺ Unexpected conflicts: feat/05 branched from the current main, so main must
+  have moved since. Checking what landed on it:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Another session already merged spec 03 into main with its own review fixes, so
+  this merge pairs 03 (Due Dates) with 05 (Owners), as the spec index flagged.
+  I'm going through each conflict now. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Both specs extend the same spot, so I'm keeping both sides: record_occurrence
+  takes due_date and owner=, and the ingest loop resolves the date first, then
+  the owner. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The merged ingest loop reads correctly. Checking the auto-merged
+  record_occurrence body and running the full suite:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 255 tests pass with specs 01–05 together. A quick end-to-end run on the
+  sample notes, then the merge commit:
+
+  Ran 1 shell command (ctrl+o to expand)
+⏺ All the work from this session is now merged into main, and all 255 tests
+  pass. It isn't pushed: main is 27 commits ahead of GitHub.
+
+  The last merge needed fixing by hand. While I was building spec 05, another
+  session merged spec 03 (Due Dates) into main. Specs 03 and 05 both extended
+  the same spots in store.py, ingest.py, cli.py and one spec 02 test. I kept
+  both sides each time: an ingested line now gets its Due Date and its owner
+  resolved, and both are stored and reported.
+
+  Specs 01–05 are all done on main. Running the sample notes/ folder end to end:
+
+  ┌─────────────┬───────────────────────────────────────────────────────────┐
+  │             │                          Result                           │
+  ├─────────────┼───────────────────────────────────────────────────────────┤
+  │ Notes       │ 31 read, 4 Malformed, 1 ignored                           │
+  ├─────────────┼───────────────────────────────────────────────────────────┤
+  │ Action      │ 115 stored, 13 already Done                               │
+  │ Items       │                                                           │
+  ├─────────────┼───────────────────────────────────────────────────────────┤
+  │ Owners      │ 5 Ambiguous, 2 Unknown, 3 Unassigned (all listed in the   │
+  │             │ report)                                                   │
+  ├─────────────┼───────────────────────────────────────────────────────────┤
+  │ Due Dates   │ every Due Phrase resolved                                 │
+  └─────────────┴───────────────────────────────────────────────────────────┘
+
+  Checks against FRD §6 also pass. "Finalise the Q4 sales targets" is Meera
+  Iyer's and due 2026-10-03. "Decide on the launch date" is a Team Item owned by
+  the five Attendees. "Circulate the go/no-go summary" is Ambiguous between the
+  two Priyas.
+
+  Still to do:
+  - Wide owner column: in list, Team Items with long Attendee lists make the
+    owner column very wide. Spec 07 adds terminal-width truncation, so I left
+    it.
+  - Report entry types: owner entries in the report are plain dicts, while spec
+    03's Due Phrase entries are small data classes. The --json output is
+    consistent, but the two could be unified later.
+  - Old worktrees and branches: the at-03 and at-04 worktrees and all six
+    feature branches still exist locally. Their work is all in main, so they can
+    be removed with git worktree remove ../at-03 ../at-04 and git branch -d.
+    Check at-03's uncommitted docs/frd.md change first; I didn't touch it.
+
+  Next on the critical path is spec 06 (Duplicates, status and re-ingest), now
+  that 03 and 05 are both in. Tell me if you want main pushed to GitHub.
+
+✻ Cooked for 53s · done 12:06 AM
+
+※ recap: We're building the actiontrack CLI spec by spec, and specs 01 to 05 are now merged into main with all 255 tests passing. Next is pushing main to GitHub, then starting spec 06 (Duplicates and re-ingest). (turn off recaps in /config)
+  ⎿  Read src/actiontrack/owners.py (132 lines)
+  ⎿  Read tests/conftest.py (118 lines)
+  ⎿  Read src/actiontrack/items.py (252 lines)
+  ⎿  Referenced file src/actiontrack/store.py
+  ⎿  Read src/actiontrack/ingest.py (204 lines)
+  ⎿  Skills restored (mattpocock-skills:implement-spec, mattpocock-skills:tdd)
+
+⏺ Compacted while idle, before the prompt cache expired · turn off with 
+  "idleCompaction": false in settings.json

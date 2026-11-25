@@ -1,0 +1,152 @@
+ ▐▛███▛█   Claude Code v2.1.332
+▝▜██████▀  Sonnet 5.5 · Claude Team
+ ▝▝   ▝▝   ~/Desktop/Personal/Ai Session/Action-Tracker
+
+
+❯ /model                                                                        
+  ⎿  Set model to Sonnet 5.5 and saved as your default for new sessions
+
+⏺ ponytail: its classic.UserPromptSubmit hook was skipped. 
+  "cc-plugin-sec-default" runs first and sent the event on past it.
+
+❯ Hey the action tracker is mostly done building, can you look for any cavets   
+  and gaps left to work on                                                      
+
+⏺ I'll check spec status, the test suite, and the code against the FRDs.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+⏺ The checked-out branch feat/07-list-command is behind main, which already has
+  specs 08 and 09 merged. I'll audit main from a throwaway export so I don't
+  touch this checkout.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All nine specs are done on main. Next I'll run the suite there and read the
+  late-added code (gmail.py, followup.py, cli.py, store.py).
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Quoting issue with the space in the path; I'll use a wrapper script.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ I found no blocking gaps. All nine specs are marked done on main, and the
+  suite passes there (371 tests). The real gaps are around data lifecycle and
+  Gmail not being verified against the real server.
+
+  Your checkout is on feat/07-list-command, which is behind main. main already
+  has specs 08 and 09 merged. I audited a throwaway export of main and changed
+  nothing in your repo.
+
+  Gaps worth working on
+
+  1. Stale items never retire. I reproduced this with a crafted note.
+     - Rewording a task line ("send the quote" → "send the revised quote")
+       creates a second item. The old one stays Open.
+     - Deleting a line, or the whole note, leaves its items Open forever.
+     - Both go into followup emails, so people get chased for work that no
+       longer exists.
+     - The only way out is done, and nothing reopens an item. This follows from
+       FR-9 and FR-11 plus the "no editing items" scope line, but it is the most
+       likely thing to hurt in real use.
+     - A fix would be to retire an item on re-ingest when none of its Sources
+       still appear in a note. That needs a new FR and a spec.
+  2. Gmail has only been exercised against the fake server. technical_details.md
+     §6.1 says it was "tested against @artymclabin/gmail-mcp". Nothing in the
+     repo shows a live run, and I couldn't do one because it needs OAuth.
+     - The adapter has handling that matches the production server's quirks: to
+       as a list, Error: text without isError, and the draft id stored as a
+       whole sentence. That handling was written from docs rather than a live
+       run.
+     - Do one real followup "<you>" and check Gmail Drafts before relying on it.
+  3. A parenthetical in the owner part leaves the item unassigned. Lena (with 
+     Priya) to collect user feedback… becomes Unassigned with the whole line as
+     the task. It's per FR-6, but it silently drops a clear owner. Consider
+     tolerating (…) after the name.
+  4. No README. The setup steps live in docs/technical_details.md §6, so someone
+     landing on the repo root has no entry point.
+
+  Smaller caveats
+
+  - Global options position: --db, --config and --today only work after the
+    subcommand. actiontrack --db x list gives "invalid choice". The FRD says
+    "global options on every command", so it's technically consistent, but
+    people will try the other order.
+  - Default database: ./.actiontrack.db is relative to the current directory.
+    Running from another folder silently uses a different, empty database.
+    Setting ACTIONTRACK_DB is the workaround.
+  - Mid-batch interruption: if followup --all is killed during the Gmail calls,
+    the drafts already made aren't recorded. The 24-hour duplicate warning then
+    doesn't fire on the next run.
+  - Stale FRD text:
+    - FR-7 step 5 cites "(FR-17)" for the roster, but that's FR-18.
+    - FRD §8 still lists the Gmail server choice as open, although spec 09
+      settled it.
+  - Dependency pin: mcp>=2.3 has no upper bound, and gmail.py uses 2.x-only
+    imports (Client, mcp_types). A future major release could break followup.
+  - Branch clutter: local feat/* branches (all merged), a docs/specs-index
+    branch, and a stale current checkout. Switch to main or a fresh worktree
+    before new work.
+
+  I did not read store.py, ingest.py or the test files line by line, and I did
+  not run the fuzz or hostile-note tests myself beyond the suite passing. The
+  one risk to know is that real Gmail drafts remain unverified.
+
+✻ Worked for 2m 0s · done 1:17 AM
+
+❯ is anything is left to merge merge it and push the code.                      
+
+  No result recorded for 1 call (ctrl+o to expand)
+  ⎿  $ cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && cat /Users/coditas/.claude/projects/-Users-coditas-Desktop-Personal-Ai-Session-Action-Tracker/memory/shared-checkout-parallel-sessions.md; git fetch origin 2>&1 | tail -2; echo "--- unmerged into main:"; git branch -a --no-merged m…
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ is anything is left to merge merge it and push the code. and finally write a  
+  readme file                                                                   
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Nothing is left to merge: every branch is already in main, and main equals
+  origin/main. So I'll write the README in my own worktree on main (not the
+  shared checkout) and push that.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(~/Desktop/Personal/Ai Session/at-readme/README.md)
+  ⎿  Wrote 114 lines to ~/Desktop/Personal/Ai Session/at-readme/README.md
+       1 # actiontrack
+       2 
+       3 A Python CLI that reads a folder of markdown meeting notes, trac
+         ks the action items in them, and creates Gmail **drafts** for fo
+         llow-ups. It never sends email.
+       4 
+       5 ```text
+       6 notes/*.md ──ingest──▶ SQLite ──list / done──▶ you
+       7                           └────followup────▶ Gmail draft (via an
+          MCP server) ──▶ you review and send
+     … +107 lines (ctrl+o to expand)
+
+  Pushed to main (ctrl+o to expand)
+
+⏺ Nothing was left to merge, so I wrote the README and pushed it to main
+  (8a00740..016b916).
+
+  - Merge check: no branch is unmerged into main, and main already matched
+    origin/main before my commit. The stale feat/* branches are all fully
+    merged, so I left them alone.
+  - README: it covers install, quick start, writing notes, the Gmail config, the
+    drafts-only safety rules and known limits. It also lists the project docs.
+    The known-limits section includes the findings from my audit: items don't
+    retire when a note changes, and followup is untested against real Gmail. I
+    did not re-run the code or tests for this commit.
+  - Where I committed: in a separate worktree, ../at-readme (next to
+    Action-Tracker), because your main checkout is shared with other sessions. I
+    did not touch it, and it is still on feat/07-list-command, now two commits
+    behind main.
+
+  I left ../at-readme in place; remove it with git worktree remove ../at-readme
+  when you want. Also, the first command I tried this turn, a git fetch plus a
+  memory read, was rejected, so I skipped the fetch. The push succeeded, so
+  origin/main was current.
+
+✻ Cogitated for 36s · done 1:19 AM

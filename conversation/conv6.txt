@@ -1,0 +1,850 @@
+ ▐▛███▛█   Claude Code v2.1.332
+▝▜██████▀  Opus 5.5 · Claude Team
+ ▝▝   ▝▝   ~/Desktop/Personal/Ai Session/Action-Tracker
+
+
+⏺ ponytail: its classic.UserPromptSubmit hook was skipped. 
+  "cc-plugin-sec-default" runs first and sent the event on past it.
+
+❯ hey you are a senior software developer with experties in build applcation    
+  which are sustainable and optimised.                                          
+                                                                                
+  we ae build action-traker and we at at the last stage of development. can you 
+  load some context and tell me whats lef to build                              
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+⏺ One spec is left: 09, Follow-up Drafts (actiontrack followup). Specs 01–08 are
+  all marked done on main, and the full suite passes on a copy of main (341
+  tests).
+
+  ┌───────┬──────────────────────────────────────────┬──────────────────────┐
+  │ Spec  │              What it covers              │    Status on main    │
+  ├───────┼──────────────────────────────────────────┼──────────────────────┤
+  │       │ Ingest, action-item extraction, due      │                      │
+  │ 01–06 │ dates, config, owner resolution,         │ done                 │
+  │       │ duplicates and re-ingest                 │                      │
+  ├───────┼──────────────────────────────────────────┼──────────────────────┤
+  │ 07    │ list command                             │ done (merged)        │
+  ├───────┼──────────────────────────────────────────┼──────────────────────┤
+  │ 08    │ done command                             │ done (merged)        │
+  ├───────┼──────────────────────────────────────────┼──────────────────────┤
+  │ 09    │ followup: create a Gmail draft per       │ ready-for-agent, not │
+  │       │ person                                   │  started             │
+  └───────┴──────────────────────────────────────────┴──────────────────────┘
+
+  Spec 09 is unblocked: both its blockers (04 and 07) are done, and no feat/09-*
+  branch exists yet. It covers FR-15, FR-16, FR-17, NFR-1, NFR-4, NFR-5 and
+  ADR-0001.
+
+  What spec 09 needs (all from docs/specs/09-followup-drafts.md):
+  1. An open decision first: choose one stdio Gmail MCP server for real use and
+     check that its create-draft tool takes to/subject/body. If it uses other
+     argument names, add a name mapping to [gmail] in the config instead of
+     special-casing that server in code.
+  2. Add the mcp package. pyproject.toml has no dependencies yet and mcp isn't
+     installed in .venv. CLAUDE.md already allows it, so this needs no extra
+     approval.
+  3. followup.py (no I/O): builds the recipient, subject and plain-text body.
+     Overdue items come first with days late, then the rest by due date, and
+     each item shows where it came from.
+  4. gmail.py: the only code that talks to MCP. It starts the server from an
+     argument list, never through a shell, and checks that the configured draft
+     tool exists. It calls only that tool and keeps the CLI synchronous.
+  5. A drafts table added as a new migration in store.py. It records each
+     draft's Gmail id and items, and drives the warning when a draft for the
+     same person was made in the last 24 hours.
+  6. The followup subcommand in cli.py: <owner> or --all, --dry-run, skip
+     reporting, a summary at the end, and exit codes 0/1/2.
+  7. A fake Gmail MCP server for tests, built with FastMCP. It offers
+     create_draft and a decoy send_message, logs every call, and can be told to
+     fail for one recipient or to leave out create_draft. This is the second
+     test seam.
+  8. Docs: set spec 09 to Status: done, and update docs/frd.md and GLOSSARY.md
+     if anything changes.
+
+  Things to get right:
+  - Drafts only. No code path may call anything except the configured draft
+    tool, and the tests must show send_message never appears in the call log.
+  - Reuse list's query for open items so list --owner X and followup X always
+    agree. Don't write a second query.
+  - Never email ambiguous, unknown, unassigned or done items. The sample-notes
+    test checks that "circulate the go/no-go summary" never appears in any
+    email.
+
+  This is the only spec in its wave, so a single session (or worktree) can build
+  it from main.
+
+  I didn't read FR-15 to FR-17 or ADR-0001 in full, only the spec's summary of
+  them. I also didn't check whether the current branch, feat/07-list-command,
+  has anything not yet on main. It looks fully merged.
+
+✻ Cooked for 43s · done 12:45 AM
+
+❯ lets build spec 9 using /mattpocock-skills:implement-spec mainting clean      
+  coding practice and proper hygen,.                                            
+
+⏺ Skill(mattpocock-skills:implement-spec)
+  ⎿  Loaded skill
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+⏺ Tickets for spec 09 don't exist yet, so I'm writing them first. Checking how
+  tests import the package so worktrees test their own code.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Installing the mcp SDK into the shared venv (spec 09's one allowed
+  dependency).
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Writing the four tickets for spec 09 into .scratch/09-followup-drafts/issues/.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Creating the integration branch and the first two ticket worktrees.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Launching ticket 01 (implementer) and ticket 02 (research) in parallel.
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Implement 09 ticket 01 dry-run
+   └ Research ticket 02 Gmail server
+
+⏺ Spec 09 had no tickets yet, so I wrote four and started the first two. Two
+  background agents are running now:
+
+  ┌────────────────────────────────────────────┬──────────┬─────────────────┐
+  │                   Ticket                   │ Blocked  │     Status      │
+  │                                            │    by    │                 │
+  ├────────────────────────────────────────────┼──────────┼─────────────────┤
+  │ 01 followup --dry-run: build the emails,   │ none     │ running in      │
+  │ resolve the owner, report skips            │          │ ../at-09-01     │
+  ├────────────────────────────────────────────┼──────────┼─────────────────┤
+  │ 02 Research: choose a real Gmail MCP       │          │ running in      │
+  │ server and work out how the mcp client API │ none     │ ../at-09-02     │
+  │  is used                                   │          │                 │
+  ├────────────────────────────────────────────┼──────────┼─────────────────┤
+  │ 03 Gmail drafts through MCP, plus a fake   │ 01, 02   │ waiting         │
+  │ MCP server for tests and the exit codes    │          │                 │
+  ├────────────────────────────────────────────┼──────────┼─────────────────┤
+  │ 04 Draft history table and the warning for │ 03       │ waiting         │
+  │  a repeat within 24 hours                  │          │                 │
+  └────────────────────────────────────────────┴──────────┴─────────────────┘
+
+  Setup so far:
+  - Tickets: written to .scratch/09-followup-drafts/issues/ in the same format
+    specs 07 and 08 used.
+  - Branches: the integration branch is feat/09-followup-drafts, created from
+    main in its own worktree ../at-09. Each ticket gets its own worktree, so
+    nothing merges or commits in the shared checkout.
+  - mcp package: I installed it (version 2.3.0) into the shared .venv with uv.
+    pyproject.toml won't list it until ticket 03.
+  - Running tests in a worktree: use PYTHONPATH=src. The .venv install points at
+    the shared checkout's code, so without it a worktree would test that code
+    instead of its own.
+
+  When agents finish, a separate agent merges each ticket into the integration
+  branch, then 03 and 04 start. After all four are in, I'll run a code review
+  and have one agent fix what it finds.
+
+  I split out a research ticket because the spec says the choice of Gmail server
+  should be settled first. If that server uses argument names other than
+  to/subject/body, ticket 03 also adds a name mapping to the config.
+
+✻ Cooked for 1m 57s · done 12:48 AM
+
+› Message from general-purpose
+  Ticket 01 is done on feat/09-01-dry-run-emails, but the ticket file's Status
+  is still `claimed` and I did not mark it done. Full suite: 355 passed, 14 of
+  them new. The merge of feat/09-followup-drafts was already up to date.
+
+  Commits:
+  - 3ea68aa `feat(followup): compose emails and print them with --dry-run
+  (FR-15, FR-16)`
+  - 627522e `test(followup): cover --dry-run selection, skips and usage errors;
+  document output in FRD (FR-15, FR-16)`
+
+  Files: new `src/actiontrack/followup.py` (pure `compose`) and
+  `tests/test_09_followup.py`, plus `cli.py`, `tests/conftest.py`
+  (`write_roster` gained a `sender` argument) and `docs/frd.md`.
+
+  FRD decisions (FR-15/FR-16):
+  - Output layout: `---` between emails, `Skipped <Person>: <reason>` lines, and
+  a final `Dry run: N emails composed, M skipped. Nothing was created.` line.
+  - `--all` visits Persons alphabetically.
+  - Due phrase renders as `due <phrase>`, and a one-day-late item reads `(1 day
+  overdue)`.
+  - `<owner>` and `--all` are mutually exclusive.
+  - `--dry-run` never creates a database.
+
+  The ticket's Comments section has hand-off notes for tickets 03 and 04.
+
+  Left undone: only the golden test was written red first; the other tests were
+  added after the code and passed straight away.
+
+⏺ Ticket 01 is back. Merging it into the integration branch in ../at-09 (fast
+  and conflict-free, so I'm doing it inline).
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/at-09" && git status
+      --porcelain && git merge --no-ff feat/09-01-dry-run-emails -m "Merge
+      branch 'feat/09-01-dry-…)
+  ⎿  Merge made by the 'ort' strategy.
+      docs/frd.md                 |  12 ++-
+      src/actiontrack/cli.py      |  77 ++++++++++++++++--
+     … +17 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to /Users/coditas/Desktop/Personal/Ai 
+     Session/Action-Tracker
+  ⎿  (another command ran in this repository at the same time; a change 
+     made by either may show under either result)
+
+⏺ Agent "Implement 09 ticket 01 dry-run" finished · 2m 45s
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Ticket 01 is merged into the integration branch, and the full suite there
+  passes: 355 tests, 14 of them new.
+
+  What's built: actiontrack followup <owner>|--all --dry-run now prints the
+  follow-up emails without touching Gmail. The agent decided these details and
+  recorded them in docs/frd.md (FR-15/FR-16):
+  - --all goes through people in alphabetical order.
+  - A due phrase reads due <phrase>, and one day late reads (1 day overdue).
+  - <owner> and --all can't be used together.
+  - --dry-run never creates a database.
+  - The output ends with Dry run: N emails composed, M skipped. Nothing was 
+    created.
+
+  A gap to know about: the agent wrote only the golden-text test before the
+  code. The other tests came after the code and passed on the first run, so
+  they've never been seen to fail. The code review at the end will check them.
+
+  Ticket 02 (choosing the Gmail server and working out the mcp client API) is
+  still running. Ticket 03 is waiting on it, and 04 can't start until 03 is
+  merged.
+
+✻ Worked for 33s · done 12:51 AM
+
+› Message from general-purpose
+  Ticket 02 is resolved: the production server is `@artymclabin/gmail-mcp`, but
+  `draft_email` takes `to` as a list. It's the maintained fork of the archived
+  GongRzhe server, stdio, MIT, npm 1.2.4 (2026-11-01). I did not run it, so the
+  launch command is derived from its package.json and source. Auth is its own:
+  `npx @artymclabin/gmail-mcp auth --scopes=gmail.compose`.
+
+  **Config:** `command = ["npx","-y","@artymclabin/gmail-mcp"]`, `draft_tool =
+  "draft_email"`.
+
+  **Args:** `to` (a list of strings, not a string), `subject`, `body`. The names
+  match, so no name mapping. Ticket 03 must send `to` as a list, e.g. by
+  checking `inputSchema.properties.to.type` after `list_tools`.
+
+  **Result:** text only, `Email draft created successfully with ID: <id>`.
+  Failures are text `Error: ...` with `isError` unset, so parse the id.
+
+  **mcp 2.3.0:**
+  - FastMCP is now `mcp.server.mcpserver.MCPServer`.
+  - Client: `async with mcp.Client(StdioServerParameters(command,args,env),
+  read_timeout_seconds=N)`, then `list_tools()` and `call_tool()`. Results
+  expose `is_error`, `structured_content`, `content[].text`.
+  - `env` merges over a safe default env only, so pass `dict(os.environ)`.
+  - A missing binary raises `FileNotFoundError`. A server that exits or hangs
+  raises a nested `ExceptionGroup` of `MCPError`.
+
+  The merged branch passes 341 tests. I appended the answer to the ticket file
+  in the Action-Tracker checkout, since `.scratch` doesn't exist in the
+  worktree.
+
+  Files are in /tmp/actiontrack-09-notes:
+  - 02-gmail-server-and-mcp-sdk.md
+  - fake_server.py
+  - client_probe.py
+
+⏺ Ticket 02 is back. Merging it, then starting ticket 03.
+
+  Merged feat/09-02-production-gmail-server (ctrl+o to expand)
+
+⏺ Agent "Research ticket 02 Gmail server" finished · 3m 33s
+
+⏺ Agent(Implement 09 ticket 03 MCP drafts)  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ I merged ticket 02 into the integration branch; all 355 tests pass there.
+  Ticket 03, which creates the real Gmail drafts, is now running in ../at-09-03.
+
+  Gmail server picked in ticket 02: @artymclabin/gmail-mcp. It's the maintained
+  fork of an archived Gmail server and handles its own sign-in, so the config
+  holds no credentials. It is now in actiontrack.example.toml and
+  docs/technical_details.md. The agent wrote the launch command from the
+  package's source and never ran the server, so the setup is untested against
+  real Gmail.
+
+  Two quirks of that server I handled without special-casing it:
+  - Recipient as a list: its draft_email tool wants to as a list. Ticket 03 will
+    check the tool's published input schema and send a list only when the
+    schema asks for one. No config mapping is needed.
+  - Errors that look like success: some failures come back as text starting
+    Error: without being flagged as errors. Ticket 03 counts those as failed
+    drafts too.
+
+  mcp 2.3.0 has changed its API: the server class formerly called FastMCP is now
+  MCPServer. The research notes and working sample scripts are in
+  /tmp/actiontrack-09-notes/ for ticket 03 to build on.
+
+  Ticket 04 (draft history and the warning on a repeat within 24 hours) starts
+  once 03 is merged.
+
+✻ Sautéed for 39s · done 12:52 AM
+
+› Message from general-purpose
+  Ticket 03 is built and committed in `at-09-03`, and the full suite passes (364
+  tests, ~23s). `feat/09-followup-drafts` was already merged, so the merge was
+  a no-op.
+
+  - **Commit:** 58f723a `feat(followup): create Gmail drafts through the
+  configured MCP server (FR-15, FR-17)`. It adds `gmail.py`,
+  `tests/fake_gmail_server.py` and `tests/test_09_drafts.py` (10 tests), and a
+  `fake_gmail` fixture in `conftest.py` whose finaliser fails any test that
+  logged `send_message`. `mcp>=2.3` is in `pyproject.toml`.
+  - **Docs:** FR-15 and FR-17 (summary wording, exit codes, `to` array handling,
+  60s timeout) and `docs/technical_details.md` are updated.
+  - **Hand-off:** appended to ticket 04's `## Comments`. It says `followup
+  --json` does not exist.
+  - **Not covered by tests:** a hung server is checked only manually. Its
+  `initialize` timed out with a clean error, but took about 16s for a 3s
+  timeout, so the real 60s timeout can run to roughly 75s.
+  - **Test cost:** each fake-server test takes ~2s, mostly `mcp` import time in
+  the subprocess.
+  - **Left undone:** I did not update the ticket 03 `Status:` line; it lives in
+  the untracked `.scratch` of the shared checkout.
+
+⏺ Ticket 03 is back. Merging it and checking the never-send guard myself before
+  starting ticket 04.
+
+  Merged feat/09-03-gmail-drafts-via-mcp (ctrl+o to expand)
+
+⏺ Agent "Implement 09 ticket 03 MCP drafts" finished · 4m 43s
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent(Implement 09 ticket 04 history)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Ticket 03 is merged into the integration branch, so followup now creates real
+  Gmail drafts through the configured MCP server. The full suite passes: 364
+  tests, including 10 new ones that run against the fake server.
+
+  Never-send rule: I checked this myself. gmail.py has exactly one tool call,
+  and it goes to the configured draft tool. mcp is imported only inside that
+  module, and only when a draft is being created. In tests, a check on the fake
+  server fails any test whose call log shows send_message.
+
+  Two weak spots:
+  - Hung-server timeout not tested: the agent only checked it by hand. A
+    3-second timeout took about 16 seconds to give up, so with the real
+    60-second setting a hung server could block for roughly 75 seconds before
+    the clean error.
+  - Slower suite: each fake-server test takes about 2 seconds, mostly from
+    loading mcp in the subprocess. The full suite now takes about 23 seconds.
+
+  Ticket 04 is running in ../at-09-04. It adds a history table of drafts and the
+  warning when the same person got a draft in the last 24 hours. Once it's
+  merged, I'll run the code review on the integration branch.
+
+✻ Cooked for 49s · done 12:57 AM
+
+› Message from general-purpose
+  Ticket 04 is built test-first on feat/09-04-draft-history in `at-09-04`. One
+  commit, deb45bc `feat(followup): record drafts and warn on a repeat within 24
+  hours (FR-15)`. `feat/09-followup-drafts` was already an ancestor, so the
+  merge was a no-op. Full suite passes at 368 (4 new FR-15 tests in
+  `tests/test_09_drafts.py`).
+
+  Decisions:
+  - **Migration:** one appended migration (schema version 6) adds `drafts` plus
+  a `(person, created_at)` index. `created_at` is ISO UTC wall time.
+  - **Store:** `Store.latest_draft_at` and `Store.record_draft`; all SQL stays
+  in `store.py`.
+  - **Warning:** printed to stderr before the batch call as `warning: a draft
+  for <Person> was already created at <ISO UTC>`. The 24h check and the inserts
+  use two short transactions, so no write lock is held during the MCP call.
+  - **Recording:** only drafts with no error are recorded; `--dry-run` never
+  touches the db.
+  - **Docs:** FR-15 wording and the `technical_details.md` drafts table are
+  updated.
+
+  Not done:
+  - **24h boundary:** only the within-24h case is tested; going past 24h would
+  need a clock seam or sleeping.
+  - **Record failure:** a store failure while recording exits 1 without printing
+  the "Created draft" lines.
+  - **`--json`:** none exists on `followup`, so skipped.
+  - **Ticket status:** I set it to `done` in the gitignored `.scratch` copy in
+  the shared checkout.
+
+⏺ Ticket 04 is back. Merging it, then running the code review on the integration
+  branch.
+
+  Merged feat/09-04-draft-history (ctrl+o to expand)
+
+⏺ Agent "Implement 09 ticket 04 history" finished · 2m 25s
+
+⏺ All four tickets are merged. Running the code review on the integration branch
+  against main.
+
+⏺ Skill(mattpocock-skills:code-review)
+  ⎿  Loaded skill
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Standards review of spec 09
+   └ Spec review of spec 09
+
+⏺ All four tickets are merged into the integration branch, and the full suite
+  passes there: 368 tests. The code review of the branch against main is now
+  running, with one agent checking it against the repo's standards and one
+  checking it against spec 09.
+
+  Ticket 04 records every draft that's created and warns, without blocking, when
+  the same person already got a draft in the last 24 hours. The history table
+  was added as a new schema step, and no existing schema steps were edited.
+
+  Gaps it left open:
+  - 24-hour boundary not tested: only "a repeat within 24 hours warns" is
+    covered. Testing the case just past 24 hours would need a way to control the
+    clock in tests, or a real wait.
+  - Drafts can be created without being shown: if saving the draft history fails
+    after Gmail has already made the drafts, the command exits 1 without
+    printing their draft ids. I'll put this in the fix pass even if the
+    reviewers miss it.
+
+  All four tickets are marked resolved. When both reviews are back I'll give you
+  their findings, then have one agent fix them.
+
+✻ Worked for 1m 13s · done 1:01 AM
+
+› Message from general-purpose
+  Standards review of feat/09-followup-drafts (`git diff main...HEAD`). I read
+  the diff and checked it against the repo docs. I did not run the test suite.
+
+  **Hard violations (documented standards)**
+
+  1. **Draft history can be lost after drafts exist in Gmail** (nfrd.md NFR-2
+  "`followup` never lose[s] … draft history"; frd.md FR-15 "Every draft that was
+  created is recorded"). In `cli.py` `_create_drafts`, `gmail.create_drafts`
+  runs for the whole batch and the history is written afterwards in a separate
+  `store.transaction`.
+     - A `StoreError` at that point prints only the store error and exits 1. The
+  "Created draft …" lines never print and no draft ids are recorded or shown.
+     - In `gmail.py` `create_drafts`, a mid-batch transport failure (server dies
+  after draft 1) is not an `MCPError` per call. It goes to the exception-group
+  branch and becomes `GmailError`, or is re-raised raw as an uncaught traceback
+  (NFR-2 spirit).
+     - Either way the partial `outcomes` are dropped. The `GmailError`
+  docstring, "no draft was attempted", is also false on this path.
+     - Suggested fix: make the adapter return or keep the outcomes already
+  collected, and record and print those before reporting the failure.
+  2. **Glossary** (GLOSSARY.md "Follow-up Draft", `_Avoid_: Reminder, email,
+  notification`). The code uses `Email`, `emails`, `compose` → `Email` and
+  `email.to`. The glossary says "Follow-up Draft (per Owner)". The FRD itself
+  says "email", so this is a judgement call. Naming it `FollowupDraft` would
+  match both the glossary and `gmail.Outcome`.
+
+  **No violations found** in these areas:
+  - Migration appended, existing migrations untouched.
+  - All SQL is in `store.py`.
+  - `mcp` is imported only in `gmail.py` (and in test files).
+  - The adapter calls only the configured `draft_tool`; the send-name refusal
+  already lives in `config.py`.
+  - `conftest.write_roster` only gains a keyword-only default argument.
+  - The tests assert only on exit code, output, stderr and the fake server's
+  call log.
+
+  **Judgement calls**
+
+  - **Data Clumps / Primitive Obsession.** `emails: dict`, `item_ids: dict` and
+  `skipped: list[str]` travel together, keyed by name, through `_cmd_followup` →
+  `_create_drafts`. `skipped` is a pre-formatted `"name: reason"` string. One
+  small `Draft(person, email, item_ids)` type would remove the parallel dicts
+  and the `zip(..., strict=True)`.
+  - **Duplicated Code.**
+    - `for (name, email), outcome in zip(...)` appears twice in
+  `_create_drafts`.
+    - `if emails` is checked three times in `_create_drafts`, even though an
+  early return would do.
+    - The "Skipped …" print loop is duplicated between `_print_dry_run` and
+  `_create_drafts`.
+  - **Divergent Change / long function.** `_cmd_followup` validates config,
+  resolves names, queries items and composes emails in one body.
+  `_warn_recent_drafts` opens its own transaction and re-reads `datetime.now` on
+  every loop pass; the 24-hour rule sits in `cli.py` while `store.record_draft`
+  stamps the time.
+  - **Mysterious Name.** `open_` and `made` are weak names. `_why` uses a
+  `getattr(getattr(exc, "error", None), "message", None)` chain.
+  - **Message Chain.** `tools[draft_tool].input_schema.get("properties",
+  {}).get("to", {}).get("type")` could be hidden behind a small helper.
+  - **NFR-4 (judgement).** `env=dict(os.environ)` hands the CLI's whole
+  environment to the MCP server. It is commented and needed for HOME, but
+  passing a narrower allowlist would be safer.
+  - **NFR-3 (judgement).** The 24-hour check uses wall-clock time rather than
+  `--today`. FR-15 says to do this, so it is documented, but it cannot be pinned
+  in a test.
+  - **Heuristic.** `text.startswith("Error")` could misclassify a legitimate
+  text result; it is documented as needed for the production server.
+  - **Test coupling.** `test_09_drafts.py` imports fixtures and data from
+  `test_09_followup` (`PRIYA_EMAIL`, `seeded`). A cross-test-module dependency;
+  consider moving these to `conftest.py`.
+
+  Not checked: whether `docs/frd.md` and `docs/technical_details.md` are fully
+  in sync with the code beyond the FR-15/FR-17 text I read.
+
+⏺ The standards review is back; the spec review is still running. I'll start a
+  single fix agent once both are in, so it doesn't have to be re-briefed partway
+  through.
+
+  Two hard violations:
+  1. Drafts can exist in Gmail with no record or ids shown. This is the problem
+     I flagged earlier, and it's wider than I thought. If saving the history
+     fails, the command exits 1 without printing the draft ids. The same thing
+     happens if the MCP server dies partway through --all: the drafts already
+     made are dropped, and the run can even crash with a traceback. That breaks
+     NFR-2's "never lose draft history" and FR-15's "every draft that was
+     created is recorded". The fix will keep the results collected so far, then
+     record and print them before reporting the failure.
+  2. Wrong term. The code calls the composed message Email, but the glossary
+     says "Follow-up Draft" and lists "email" as a word to avoid. I'll rename
+     it.
+
+  Judgement calls I plan to fix:
+  - One small type in place of the separate lists that travel together by name.
+  - Remove the duplicated loops and the repeated empty-list checks.
+  - Give open_, made and _why clearer names, and pull the schema lookup into a
+    helper.
+  - Move the shared test data into conftest.py.
+  - Pass the MCP server only the environment variables it needs instead of the
+    whole environment.
+
+  Judgement calls I'll keep:
+  - The 24-hour check uses the real clock. FR-15 says to record the real time.
+  - The Error text check stays. The production server reports some failures that
+    way.
+
+✻ Brewed for 7s · done 1:02 AM
+
+⏺ Agent "Standards review of spec 09" finished · 41s
+
+› Message from general-purpose
+  Spec review of feat/09-followup-drafts. The suite passes (368). Nothing major
+  is missing and nothing is clearly wrong. I found one partial item, four
+  scope-creep items and two things worth a look.
+
+  (a) Missing or partial
+  - Further Notes: "pick and document one tested stdio Gmail MCP server for real
+  use, and confirm its create-draft tool accepts `to`/`subject`/`body`". The
+  server is chosen and documented (`@artymclabin/gmail-mcp`, `draft_email`).
+  "Tested" is only partly true. The production server is never run. The
+  `TO_LIST` fake mimics it, and the research is from its docs and source.
+  - Testing Decisions are otherwise covered. Each listed case has a test:
+    - single-person golden text, `--all`, dry-run with no log and no draft rows,
+  and the exclusions
+    - shared and Team Items, skip reasons, ambiguous owner exits 2, no config
+  exits 2
+    - missing tool, one failing recipient, 24-hour warning
+    - the `send_message` check runs in the `fake_gmail` fixture finaliser
+    - the sample-fixture test checks Meera's 12 days overdue and the absent
+  "go/no-go" item
+  - Story 26 ("match what `list --owner <Person>` shows") is covered by shared
+  query code only. No test compares the two commands' output.
+
+  (b) Scope creep (not in the spec)
+  - `to` is sent as `[address]` when the tool's schema says `type: array`
+  (`gmail.py`). This is justified by the research, but the spec says "calls it
+  with `to`, `subject` and `body`" and the Further Notes offer only an
+  argument-name mapping.
+  - A result whose text starts with "Error" counts as a failure even without
+  `is_error` (`gmail.py::_outcome`). The text-prefix match is a heuristic. It
+  could misfire on a draft id that starts with "Error".
+  - A 60-second timeout on every server wait (`TIMEOUT_SECONDS`).
+  - `mcp` is imported lazily, and the full `os.environ` is passed to the server
+  process.
+  - `--dry-run` creates no database, via `nullcontext`. This is extra FRD text,
+  and the spec only says "never writes draft rows".
+  - A missing `sender` exits 2 (`"sender is required by followup"`). Story 9
+  says only "signed with the sender from config".
+  - Rules the spec does not state, such as `unassigned` as `<owner>` exiting 2
+  and "neither or both of `<owner>`/`--all`" exiting 2. Both are reasonable. The
+  FRD was edited to match.
+
+  (c) Possibly wrong
+  - Implementation Decisions: "The draft id is taken from the tool result ...
+  and stored as returned." The production result is stored whole, as "Email
+  draft created successfully with ID: x". `docs/technical_details.md` §6.1 and
+  ticket 02 say the id is the text after `ID: `. The doc and the code disagree.
+  The spec's wording means the code is arguably right. The history row and the
+  summary line then carry a sentence instead of an id.
+  - Story 17 / Implementation Decisions: "checks the latest row for that
+  Person". This is implemented, but the warning is printed before the batch, and
+  a draft created earlier in the same run cannot trigger it. This is fine.
+
+  I also checked a server that dies mid-call. It gives "draft ... failed:
+  Connection closed", exit 1, no traceback. NFR-1 holds: only `gmail.py` names a
+  tool, the configured one.
+
+  I did not check hung-server start-up behaviour or the NFR-7 dependency pin
+  (`mcp>=2.3`) beyond reading the diff.
+
+⏺ Both reviews are in. Starting one fix agent for everything worth fixing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Spec review of spec 09" finished · 1m 18s
+
+⏺ Agent(Fix spec 09 review findings)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Both reviews are done, and one agent is now fixing the findings in
+  ../at-09-fix.
+
+  Standards (2 hard violations, about 9 judgement calls)
+
+  - Hard: drafts already created in Gmail can go unrecorded and unshown. This
+    happens if saving the history fails, or if the server dies partway through a
+    batch. It breaks NFR-2 and FR-15.
+  - Hard: the code calls the message Email, but the glossary term is "Follow-up
+    Draft".
+  - Judgement calls: separate lists that travel together by name, duplicated
+    loops, unclear names (open_, made, _why), a long chained lookup, a long
+    _cmd_followup, and test files importing test data from each other.
+
+  Spec (1 partial, 7 scope additions, 1 possibly wrong)
+
+  - Partial: the production Gmail server was chosen from its docs and source but
+    never run.
+  - No test for story 26: nothing checks that followup and list --owner show the
+    same open items. They share one query, so they should agree.
+  - Possibly wrong: the code stores the server's whole reply text ("Email draft
+    created successfully with ID: x") as the draft id. The docs say only the id
+    is stored. The spec says "stored as returned", so the code matches the spec
+    and the docs are wrong.
+  - Scope additions: the reviewer judged all of them reasonable and already
+    reflected in the FRD. They are the list-style to, the Error text check, the
+    60-second timeout, --dry-run creating no database, sender being required,
+    and the usage errors for <owner>/--all.
+
+  The fix agent is handling:
+  - Never losing created drafts. A new test makes the fake server die after the
+    first draft and checks that it is still shown and recorded.
+  - A test that followup and list --owner agree.
+  - The glossary rename and the clean-ups listed above.
+  - Treating only replies starting with Error: as failures, instead of anything
+    starting with Error.
+  - Correcting the draft-id docs to match the code.
+  - Moving shared test data into conftest.py.
+  - Marking spec 09 Status: done.
+
+  Left as they are, by choice:
+  - The 24-hour check keeps using the real clock, because FR-15 says to record
+    the real time.
+  - The full environment is still passed to the MCP server. The npx-launched
+    server needs more than mcp's safe default set.
+  - The list-style to and the 60-second timeout stay as they are.
+
+✻ Cooked for 34s · done 1:03 AM
+› Message from general-purpose
+  All seven fixes are done in the at-09-fix worktree on feat/09-review-fixes.
+  The full suite passes (371 tests, 37s) after `git merge
+  feat/09-followup-drafts`, which was already up to date.
+
+  Commits:
+  - e42f3c9 `fix(followup): never lose created drafts; use Follow-up Draft terms
+  and tidy the flow`. It bundles fixes 1-7 plus the FRD and technical_details
+  updates. I did not split it into smaller commits because the changes overlap
+  in the same files.
+  - 81f3a22 `docs(specs): mark spec 09 follow-up drafts as done (...)`.
+
+  What changed:
+  - **Created drafts are never lost.** `Created draft` lines now print before
+  any history write. If the write fails, the run exits 1 with a clear message,
+  and a mid-batch failure turns the remaining drafts into failures.
+  - **Tests added** for a server dying mid-batch (new fake-server switch
+  `EXIT_AFTER`) and a history write failing (`CHMOD_DB`), plus the story-26
+  test.
+  - **Rest of the list:** glossary rename, cleanups, `startswith("Error:")`,
+  docs and conftest move are all in.
+
+  Not fully test-first: the mid-batch-death test already passed before my
+  change, because the existing per-call `MCPError` handling covered it. The
+  transport-error path in `gmail.py` is therefore not exercised by a test. Only
+  the history-write failure test was red first. ruff and mypy are not installed,
+  so neither was run.
+
+⏺ The fixes are back. Checking where the new CHMOD_DB test switch lives before
+  merging, since a test hook in production code would be a problem.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Fix spec 09 review findings" finished · 4m 37s
+
+⏺ Test-only switches, good. Merging the fixes, running the suite, and cleaning
+  up the ticket worktrees.
+
+  Merged feat/09-review-fixes (ctrl+o to expand)
+
+⏺ Spec 09 is finished on the integration branch feat/09-followup-drafts, which
+  is checked out in ../at-09. That's the last spec, so every spec from 01 to 09
+  is now built. The full suite passes there (371 tests, up from 341 on main),
+  and spec 09 is marked Status: done.
+
+  What followup does now:
+  - followup <owner> | --all writes one plain-text follow-up per person, with
+    overdue items first and the meetings each item came from. Owner names
+    resolve the same way as in list --owner.
+  - --dry-run prints the follow-ups and creates nothing.
+  - Without --dry-run it creates Gmail drafts through the configured MCP server
+    and calls only the create-draft tool. Every test checks that the fake
+    server's decoy send_message tool was never called.
+  - Draft history: every draft created is recorded, and it warns, but still
+    creates the draft, if the same person got one in the last 24 hours.
+  - Created drafts are never lost. If the server dies partway through a batch,
+    or saving the history fails, the run still shows every draft it created and
+    exits 1.
+  - Production server: @artymclabin/gmail-mcp with its draft_email tool,
+    documented in actiontrack.example.toml and docs/technical_details.md.
+
+  Process: the work was split into four tickets and a review fix-up, each built
+  in its own worktree and merged into the integration branch. A standards review
+  and a spec review were run against the finished branch, and one agent fixed
+  what they found. Nothing was merged or committed in the shared checkout, and
+  nothing touched main. All four tickets are resolved, and the ticket worktrees
+  are removed; their branches are still there.
+
+  Risks you should know about:
+  - The real Gmail server has never been run. Its setup comes from its docs and
+    source code. The first real run needs you to sign in once with npx 
+    @artymclabin/gmail-mcp auth --scopes=gmail.compose and then try a single
+    person.
+  - The stored draft id is the server's whole reply, such as "Email draft
+    created successfully with ID: x". The spec says to store it as returned.
+  - A hung server can block for about 75 seconds before its 60-second timeout
+    fails cleanly. That was checked by hand only.
+  - One error path has no test: a connection failure that hits the whole batch,
+    rather than a single draft. The test for the server dying partway through
+    passed even before the fix, because the existing per-draft error handling
+    already caught it.
+  - Not fully test-first: several tests in tickets 01 and 04 were written after
+    the code, and the 24-hour boundary itself isn't tested.
+  - Speed and lint: the suite now takes about 39 seconds, mostly loading mcp in
+    the fake-server subprocess. ruff and mypy aren't installed, so neither was
+    run.
+
+  Should I merge feat/09-followup-drafts into main? I'd do it from ../at-09 with
+  a fast-forward-only merge that refuses if anything is out of step, then
+  delete the six spec-09 branches and the ../at-09 worktree.
+
+✻ Sautéed for 22m 23s · done 1:08 AM
+
+❯ yes merrge the branch and push the code                                       
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ main matches origin/main and isn't checked out anywhere. Making the merge
+  commit (repo convention) in ../at-09, testing it, then fast-forwarding main
+  and pushing.
+
+  Pushed to main, merged feat/09-followup-drafts (ctrl+o to expand)
+
+⏺ Pushed. Now the cleanup I offered: removing the ../at-09 worktree and deleting
+  the merged spec 09 branches (-d refuses anything unmerged).
+
+  Ran 1 shell command · 1 failed (ctrl+o to expand)
+
+⏺ -d checked against the shared checkout's current branch (feat/07), not main.
+  Verifying each one is in main, then deleting only those.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 09 is merged into main and pushed to GitHub. main and origin/main are
+  both at 8a00740. That finishes the last spec, so all nine (01–09) are built
+  and on main.
+
+  - Merge: I made a merge commit (Merge branch 'feat/09-followup-drafts': spec 
+    09 follow-up drafts), the same style as the earlier specs. The full suite
+    passed on it (371 tests) before main was updated and pushed.
+  - Shared checkout untouched: the merge was done in the spec 09 worktree, so
+    the shared checkout was never used. It is still on feat/07-list-command,
+    which is behind main. Run git switch main && git pull there when no other
+    session is using it.
+  - Cleanup: the ../at-09 worktree and all seven spec 09 branches are deleted,
+    after checking that each was already in main.
+
+  These risks still apply now that the code is on main:
+  - The production Gmail server has never been run. Before the first real use,
+    sign in once with npx @artymclabin/gmail-mcp auth --scopes=gmail.compose,
+    then run followup for a single person.
+  - mcp is not installed in a fresh environment yet. It is listed in
+    pyproject.toml, but any other machine needs a reinstall to get it.
+
+✻ Sautéed for 1m 18s · done 1:10 AM
+
+❯ anything else left to build?                                                  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The requirement-id comparison came out wrong (git grep's regex doesn't support
+  \b). Redoing it against a clean copy of main, and reading the FRD's open
+  items section.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ No. All nine specs are marked done on main, and there are no
+  shortcut:/TODO/FIXME comments or "not yet supported" paths left in src or
+  tests. Every feature in docs/frd.md is built.
+
+  A few small loose ends remain, none of them a feature:
+
+  #: 1
+  Item: FRD §8 "Open items" is out of date. It still lists choosing the Gmail
+    MCP server, which spec 09 settled. Remove it or mark it resolved, with a
+    pointer to docs/technical_details.md.
+  Size: 1 line of docs
+  Who: me
+  ────────────────────────────────────────
+  #: 2
+  Item: NFR-7 has no test. Nothing checks that ingest, list and done still
+    work when mcp can't be imported. The code loads mcp only when a draft is
+    created, but nothing guards that.
+  Size: 1 small test
+  Who: me
+  ────────────────────────────────────────
+  #: 3
+  Item: Two test gaps left from spec 09. One is the 24-hour boundary (it needs
+    a way to control the clock in tests). The other is a connection failure
+    that hits the whole batch at once, not a single draft.
+  Size: small
+  Who: me, optional
+  ────────────────────────────────────────
+  #: 4
+  Item: Run against the real Gmail server once. The chosen server
+    (@artymclabin/gmail-mcp) has only been read about, never run. Steps: sign
+    in with npx @artymclabin/gmail-mcp auth --scopes=gmail.compose, then
+    actiontrack followup "<you>" against a test roster entry.
+  Size: ~10 min
+  Who: you (needs your Google sign-in)
+  ────────────────────────────────────────
+  #: 5
+  Item: Reinstall on other machines so they get the new mcp dependency.
+  Size: 1 command
+  Who: you
+
+  NFR-9 (maintainability) is also never cited in tests, but it's a rule about
+  module layout and naming rather than behaviour, so it doesn't need a test.
+
+  I'd do 1 and 2 now as one small change on a branch, then merge to main and
+  push the same way as before; 3 can wait. Want me to go ahead?
+
+✻ Sautéed for 26s · done 1:13 AM
+
+❯ /model 
+  ⎿  Kept model as Opus 5.5

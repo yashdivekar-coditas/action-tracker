@@ -1,0 +1,2273 @@
+ ▐▛███▛█   Claude Code v2.1.332
+▝▜██████▀  Opus 5.5 · Claude Team
+ ▝▝   ▝▝   ~/Desktop/Personal/Ai Session/Action-Tracker
+
+
+⏺ ponytail: its classic.UserPromptSubmit hook was skipped. 
+  "cc-plugin-sec-default" runs first and sent the event on past it.
+
+❯ hey we are building an action-trcaker, i want you to be a senior software     
+  developer and develop this system while following clean codeing practice and  
+  good git hygens, Can we track down where we left off so we can start working  
+
+⏺ Let me check the spec queue and repo state.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+⏺ Specs 01–05 are done and merged. Next up is spec 06 (no branch claimed yet).
+  I'll check that main is green and read spec 06.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ We left off after spec 05. Specs 01–05 are done and merged, and spec 06 is
+  next.
+
+  State of the repo
+  - main is clean and all 255 tests pass. Note that pytest isn't on your PATH,
+    so run it as .venv/bin/python -m pytest.
+  - Specs done: 01 notes and ingest run, 02 action item extraction, 03 due date
+    resolution, 04 configuration, 05 owner resolution.
+  - Next: spec 06, "Duplicates, status across Sources, and re-ingest". Its
+    blockers (03 and 05) are done and nobody has opened a branch for it yet.
+  - After that: specs 07 (list) and 08 (done) can be built in parallel, then 09
+    (Gmail follow-up drafts) last.
+
+  Git housekeeping
+  - Local main has 27 commits that aren't on origin/main yet. I haven't pushed
+    anything.
+  - docs/specs-index and feat/01 through feat/05 are all merged into main and
+    can be deleted.
+
+  What spec 06 covers: repeats of the same item across meetings become one item
+  with several Sources. The match uses the item's Owner(s) plus its task text
+  with wording noise removed. The latest meeting's Due Phrase sets the Due Date.
+  A [x] in any Source marks the item Done, and it stays Done. Running ingest
+  again changes nothing, and if a correction makes two items the same, they
+  merge into the lower id. The work mainly touches items.py (the matching key),
+  store.py (a new migration and the merge logic) and ingest.py (the items_merged
+  and items_done counts in the report).
+
+  Plan for 06: create a feat/06-duplicates-status-and-reingest branch from main
+  and build it test-first, one small commit per rule, with each test citing its
+  FR id. When the tests pass I'll update docs/frd.md and the GLOSSARY.md terms,
+  set the spec's Status: done, and merge it the same way the earlier specs were
+  merged.
+
+  Should I start spec 06 now? And do you want me to push main and delete the
+  five merged branches first?
+
+  I haven't yet read the code for 06 or docs/technical_details.md; I'll do that
+  before writing anything.
+
+✻ Sautéed for 31s · done 12:09 AM
+
+❯ lets build spec 6 /mattpocock-skills:implement-spec and keep clean coding     
+  practices                                                                     
+
+⏺ Skill(mattpocock-skills:implement-spec)
+  ⎿  Loaded skill
+
+⏺ The skill expects tickets for the spec. First I'll check the issue tracker
+  convention and whether spec 06 has any.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 06 has no tickets: this project tracks work as docs/specs/NN-*.md files
+  with Status: lines. Before I split 06 into a ticket graph, I'll read the code
+  it touches.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ I have enough context to split the spec. One thing to check first: whether
+  worktree tests import their own src or the main checkout's (because of the
+  editable install).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Tests in a worktree need PYTHONPATH=src, since the editable install points at
+  main's code. Next I'm creating the integration branch and writing the ticket
+  graph. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(.scratch/06-duplicates-status-and-reingest/issues/01-repeats-collapse.md
+       )
+  ⎿  Wrote 27 lines to .scratch/06-duplicates-status-and-reingest/issues/01
+     -repeats-collapse.md
+       1 # 01 — Repeats collapse into one item with many Sources
+       2 
+       3 Status: ready-for-agent
+       4 Blocked by: none
+       5 Spec: docs/specs/06-duplicates-status-and-reingest.md (stories 1
+         –5, 8, 9, 17–20)
+       6 Requirements: FR-9, FR-10, FR-12 (`items_merged`, `items_done`)
+       7 
+       8 ## What to build
+       9 
+     … +18 lines (ctrl+o to expand)
+
+⏺ Write(.scratch/06-duplicates-status-and-reingest/issues/02-latest-meeting-sets
+       -due-and-task.md)
+  ⎿  Wrote 22 lines to .scratch/06-duplicates-status-and-reingest/issues/02
+     -latest-meeting-sets-due-and-task.md
+       1 # 02 — The latest meeting sets the Due Date and task text
+       2 
+       3 Status: ready-for-agent
+       4 Blocked by: 01
+       5 Spec: docs/specs/06-duplicates-status-and-reingest.md (stories 6
+         , 7)
+       6 Requirements: FR-9 (Due Date from latest Source), FR-8
+       7 
+       8 ## What to build
+       9 
+     … +13 lines (ctrl+o to expand)
+
+⏺ Write(.scratch/06-duplicates-status-and-reingest/issues/03-corrections-merge-a
+       nd-reingest.md)
+  ⎿  Wrote 30 lines to .scratch/06-duplicates-status-and-reingest/issues/03
+     -corrections-merge-and-reingest.md
+       1 # 03 — Corrections merge items into the lower id; re-ingest is i
+         dempotent
+       2 
+       3 Status: ready-for-agent
+       4 Blocked by: 01, 02
+       5 Spec: docs/specs/06-duplicates-status-and-reingest.md (stories 1
+         0–16, plus the sample fixture under "Testing Decisions")
+       6 Requirements: FR-11, FR-10, FR-12 (`items_merged`)
+       7 
+       8 ## What to build
+     … +22 lines (ctrl+o to expand)
+
+⏺ The three tickets run as a strict chain because they all edit
+  Store.record_occurrence, so parallel work would conflict. I'm starting ticket
+  01 in its own worktree. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      worktree add ../at-06-01 -b feat/06-01-repeats-collapse
+      feat/06-duplicates-status-and-rein…)
+  ⎿  Preparing worktree (new branch 'feat/06-01-repeats-collapse')
+     HEAD is now at 66ff589 Merge branch 'feat/05-owner-resolution': spec 0
+     5 owner resolution
+     … +2 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to /Users/coditas/Desktop/Personal/Ai 
+     Session/Action-Tracker
+  ⎿  Updated .scratch/06-duplicates-status-and-reingest/issues/01-repeats-c
+     ollapse.md +1 -1
+      1  # 01 — Repeats collapse into one item with many Sources
+      2 
+      3 -Status: ready-for-agent                                         
+      3 +Status: claimed                                                 
+      4  Blocked by: none
+      5  Spec: docs/specs/06-duplicates-status-and-reingest.md (stories 1
+         –5, 8, 9, 17–20)
+      6  Requirements: FR-9, FR-10, FR-12 (`items_merged`, `items_done`)
+
+⏺ Agent(Implement ticket 06-01 repeats)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Ticket 01 is being built in the background. Nothing is merged or finished yet.
+
+  I split spec 06 into three tickets:
+
+  ┌─────┬───────────────────────────────────────┬─────────┬────────────────┐
+  │  #  │                Ticket                 │ Blocked │     State      │
+  │     │                                       │    by   │                │
+  ├─────┼───────────────────────────────────────┼─────────┼────────────────┤
+  │     │ Repeats become one item with many     │         │                │
+  │ 01  │ Sources: the matching key, a schema   │ none    │ in progress in │
+  │     │ migration, attaching repeats, Done    │         │  ../at-06-01   │
+  │     │ from any Source                       │         │                │
+  ├─────┼───────────────────────────────────────┼─────────┼────────────────┤
+  │     │ The latest meeting sets the Due Date  │         │                │
+  │ 02  │ and task text, ties going to the      │ 01      │ waiting        │
+  │     │ later file name                       │         │                │
+  ├─────┼───────────────────────────────────────┼─────────┼────────────────┤
+  │     │ Corrections merge into the lower id,  │         │                │
+  │ 03  │ re-ingest changes nothing, and the    │ 01, 02  │ waiting        │
+  │     │ sample-notes acceptance checks        │         │                │
+  └─────┴───────────────────────────────────────┴─────────┴────────────────┘
+
+  Why one at a time: all three tickets edit the same function,
+  Store.record_occurrence, so running them in parallel would only produce merge
+  conflicts.
+
+  Setup:
+  - Integration branch: feat/06-duplicates-status-and-reingest, created from
+    main.
+  - Tickets: in .scratch/06-duplicates-status-and-reingest/issues/. I excluded
+    that folder from git locally, so it stays out of commits.
+  - Test path: the package is installed in editable mode, so tests in a worktree
+    would quietly import main's code. Each implementer runs pytest with
+    PYTHONPATH=src. I confirmed that this imports the worktree's own code.
+
+  Next steps:
+  1. As each ticket finishes, I merge it into the integration branch and start
+     the next one.
+  2. After ticket 03, I run /code-review on the whole branch and fix what it
+     finds.
+  3. Then I set spec 06 to Status: done.
+
+  I'll do the merges myself instead of using a separate merger agent, because on
+  a straight chain each one is a single git merge --no-ff.
+
+  The "#14 was merged into #9" message for an old id belongs to the done
+  command, so it's left for spec 08. Spec 06 only stores which item an id was
+  merged into.
+
+✻ Brewed for 2m 12s · done 12:11 AM
+
+› Message from general-purpose
+  Ticket 01 is done on `feat/06-01-repeats-collapse`. The full suite passes with
+  272 tests (17 new in `tests/test_06_duplicates.py`). The integration branch
+  tip was already in my history, so the final merge was "Already up to date" and
+  the suite is green after it.
+
+  Commits, oldest first:
+  - `03831fd` test: repeats collapse into one item with many Sources (FR-9,
+  FR-10, FR-12)
+  - `fb03a05` feat(dedupe): collapse repeats into one item with many Sources
+  - `459a3e7` test: sample Due Dates of repeated items come from their latest
+  Source
+
+  I did not edit `docs/frd.md`, because FR-9 and FR-12 already describe this
+  behaviour. I did not touch the ticket file's Status line either.
+
+  What was built:
+  - **Dedupe key:** `items.dedupe_key(owner_kind, persons, written_owner, task)`
+  is pure. Format is `person:Priya Nair|send revised quote to acme`. Ambiguous
+  and Unknown use the lowercased, whitespace-collapsed written owner. Unassigned
+  uses an empty owner part. The task is casefolded, has Unicode punctuation
+  (category P*) removed, and drops `a`/`an`/`the`.
+  - **Migration:** one new `_MIGRATIONS` entry adds the nullable
+  `items.dedupe_key` column and the partial unique index `items_live_key ...
+  WHERE merged_into IS NULL`.
+  - **`Store.record_occurrence`:** a known Source updates its item in place and
+  refreshes the key. Otherwise a live item with the same key gains the Source.
+  Otherwise a new item is inserted. `RecordResult` has a new `duplicate` flag,
+  and ingest adds it to `items_merged`. `items_done` already counted only newly
+  Done items, so it needed no change.
+  - **Collisions:** a re-resolution that makes two live items share a key hits
+  the unique index and raises `StoreError`. That is ticket 03's job, as the
+  ticket allows.
+
+  Decisions for tickets 02 and 03:
+  1. **I had to build part of ticket 02.** The ticket said attaching may leave
+  task and due alone, but then the existing suite broke. Re-ingest was no longer
+  idempotent (item fields changed on the second run), and the sample Due Date
+  for "estimate SSO work" should be 2026-09-28.
+     - Rule I added: when a Source is attached or updated and no Source of that
+  item has a later (meeting_date, note_path), it sets the item's task and
+  written owner.
+     - It sets the Due Phrase and Due Date only when that occurrence has a Due
+  Phrase, so a later mention without a phrase keeps the date.
+     - The code carries a `shortcut:` comment. The `sources` table does not
+  store each Source's own Due Phrase or Due Date.
+     - Consequence: an older Source ingested after a newer one cannot restore a
+  Due Date.
+     - Consequence: removing a phrase from a note and re-ingesting no longer
+  clears the Due Date. This changes the FR-8 line in the `record_occurrence`
+  docstring, "rewritten on every ingest", so ticket 02 should reconcile it. No
+  existing test covers it.
+     - Ticket 02 should probably store phrase and date per Source and derive the
+  item's fields from them. It should add the story 6 and 7 tests, and the "ties
+  go to the later file name" tests.
+  2. **Existing tests changed.** `tests/test_03_due_dates.py` `SAMPLE_DUES` had
+  per-line expectations that predate merging. Two now expect the merged item's
+  Due Date: quote 2026-09-04 became 2026-09-11, and the "by end of month" line
+  became 2026-10-02. That second one is Lena's "collect 5 customer quotes" item,
+  which genuinely repeats on 09-24 with a later Due Phrase.
+  3. **Ticket 03 is untouched.** `_mark_done` and `_set_owner` are unchanged,
+  and nothing writes `merged_into`. The merge should reuse the same key and
+  `StoreError` path.
+  4. **Sources list:** `list_items` already orders Sources by meeting date, then
+  path, then line, and `list --json` exposes them. Ticket 01 needed no code
+  there, only the test.
+
+  Not checked: a database that already has pre-06 rows, since only fresh temp
+  databases are covered. By design, NULL keys are filled on the next ingest, and
+  live NULLs are not unique under SQLite.
+
+⏺ Ticket 01 is reported done. Before I merge, I'll check it myself, starting
+  with the two existing test expectations it changed.
+
+  Ran 1 shell command (ctrl+o to expand)
+⏺ Agent "Implement ticket 06-01 repeats" finished · 2m 56s
+
+⏺ Both changed expectations check out: the 2026-09-11 date is the spec's own
+  fixture, and Lena's quote task repeats on 09-24. The suite passes with 272
+  tests, and I'm reading the core diff next. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The diff is clean and fits the layering, with a temporary Source rule marked
+  for replacement by ticket 02. I'm merging, closing 01, and starting 02 with
+  01's notes. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      merge --no-ff feat/06-01-repeats-collapse -m "Merge branch
+      'feat/06-01-repeats-collapse':…)
+  ⎿  272 passed in 5.84s
+     8f2f525 Merge branch 'feat/06-01-repeats-collapse': repeats collapse i
+     nto one item
+  ⎿  Updated .scratch/06-duplicates-status-and-reingest/issues/01-repeats-c
+     ollapse.md +1 -1
+  ⎿  Updated .scratch/06-duplicates-status-and-reingest/issues/02-latest-me
+     eting-sets-due-and-task.md +11 -1
+  ⎿  Updated src/actiontrack/ingest.py +2 -1
+  ⎿  Updated src/actiontrack/items.py +25 -2
+  ⎿  Updated src/actiontrack/store.py +45 -12
+  ⎿  … +2 files changed
+     tests/test_03_due_dates.py
+     tests/test_06_duplicates.py
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Agent(Implement ticket 06-02 due rules)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Ticket 01 is merged into feat/06-duplicates-status-and-reingest, and the full
+  suite passes there (272 tests). Ticket 02 is now running in the background in
+  ../at-06-02.
+
+  What ticket 01 added:
+  - An item now has a matching key built from its Owner(s) plus its task text
+    with case, punctuation, a/an/the and the Due Phrase stripped.
+  - A new schema migration adds that key, and the database refuses two live
+    items with the same key.
+  - When a meeting repeats an item, it becomes another Source of the existing
+    item instead of a new item. The ingest report counts these in items_merged.
+  - I checked the diff myself before merging: it stays inside the existing
+    module layout.
+
+  Two existing tests changed expectations, and both changes are correct:
+  - "send the revised quote to Acme" is now one item due 2026-09-11, which is
+    the date spec 06 expects for the sample notes.
+  - Lena's "collect 5 customer quotes" really does repeat on 09-24 with "by 2
+    Oct", so its Due Date is now 2026-10-02.
+
+  Gaps left for ticket 02: ticket 01 had to pull in part of 02's due-date rule
+  to keep re-ingest stable. That partial rule is marked with a shortcut: comment
+  and has two known gaps:
+  - If an older note is ingested after a newer one, it can't restore the right
+    Due Date.
+  - If you delete a Due Phrase from a note and re-ingest, the item keeps the old
+    Due Date.
+
+  Ticket 02 replaces the shortcut by storing each Source's own Due Phrase and
+  Due Date and working the item's values out from those. I've also asked it to
+  add a test for the second gap. I wrote these notes into ticket 02's file.
+
+  Ticket 01's tests only use fresh databases, so upgrading a database created
+  before spec 06 hasn't been tested.
+
+✻ Brewed for 48s · done 12:15 AM
+
+› Message from general-purpose
+  Ticket 02 is built and committed on `feat/06-02-latest-source-sets-due`. The
+  suite passes (280 tests, up from 273). The integration branch had no new
+  commits, so the final merge was a no-op and the suite was re-run after it. One
+  item from the brief changed: the FR-8 "removing a Due Phrase clears the date"
+  regression cannot be tested through the CLI (see below).
+
+  **Commits** (oldest first)
+  - `c0cbbd6` test: the latest Source sets the Due Date and task text (FR-9,
+  FR-8)
+  - `7d62d17` feat(store): derive an item's task and Due Date from its Sources
+  (FR-9)
+  - `2b1ef9f` docs: latest Source that has a Due Phrase sets the Due Date (FR-9)
+
+  **Tests**
+  - I added 8 tests to `tests/test_06_duplicates.py`.
+  - They cover a later Due Phrase replacing an earlier one, a later mention
+  without a phrase keeping the date, task text following the latest Source, the
+  file-name tie-break, and Meeting Date beating file name and ingest order.
+  - They also cover an older Source ingested later not overriding the date, and
+  an older Source ingested later restoring a Due Date. That restore case is the
+  one that failed against ticket 01's shortcut.
+  - I changed no existing tests.
+
+  **What changed**
+  - A new appended migration adds `task`, `written_owner`, `due_phrase` and
+  `due_date` to `sources`. It backfills existing rows from their item, which is
+  exact because every pre-spec-06 item had one Source. I checked the backfill on
+  a hand-built version-4 database.
+  - `store.py` has one private helper, `Store._derive_item_fields(item_id)`. It
+  takes the task and written owner from the latest Source. It takes the Due
+  Phrase and Due Date from the latest Source that has a Due Phrase, or sets both
+  to NULL if none does. "Latest" means Meeting Date, then note path, then line
+  number.
+  - `record_occurrence` now only finds or creates the item, upserts the Source
+  with its own fields, and calls the helper. The shortcut and the "rewritten on
+  every ingest" docstring line are gone, and the docstring is updated.
+  - `docs/frd.md` FR-9 now says "latest Source that has a Due Phrase", adds the
+  tie rule, and says the result does not depend on ingest order.
+  `docs/technical_details.md` §3 (the `sources` columns and "derived" notes on
+  the `items` columns) and the §4.1 flowchart label are updated.
+
+  **FR-8 regression gap**
+  - `line_key` includes the Due Phrase, so editing a line to remove the phrase
+  creates a new occurrence instead of updating the old Source. That matches the
+  documented limitation in `technical_details.md` §8.
+  - The old Source stays, and the item correctly keeps its Due Date under FR-9.
+  So I could not write a CLI test that a removed phrase clears the date.
+  - In its place I added a test that re-ingesting a sole Source after editing
+  the `Date:` header re-derives its Due Date. The "clears when no Source has a
+  phrase" path lives in the helper but has no direct test.
+
+  **For ticket 03 (merging two live items whose keys collide after
+  re-resolution)**
+  - Reuse `_derive_item_fields(winner_id)` after moving the loser's Sources to
+  the winner. Do not copy fields by hand.
+  - The merge needs to reassign `sources.item_id`. The `sources` rows now carry
+  everything the helper needs, so no other data has to move.
+  - The helper reads only `sources` and `notes`, so call it after the Source
+  move.
+  - `record_occurrence` still raises `StoreError` on the unique-index collision
+  for a re-resolved line. The collision happens at `UPDATE items SET dedupe_key`
+  in the `row is not None` branch, before the Source upsert and the helper
+  call.
+  - I left the ticket's status line in the main checkout's `.scratch` untouched.
+
+  Skipped: no test checks the migration backfill, because the CLI seam can't
+  build an old-schema database.
+
+⏺ Ticket 02 is reported done. I'll check the suite and read the diff before
+  merging.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Implement ticket 06-02 due rules" finished · 2m 27s
+
+⏺ Ticket 02's diff is clean with all 280 tests passing, though a Meeting Date
+  tie compares the full note path, which only matters across folders. I'm
+  merging and starting ticket 03 next. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      merge --no-ff feat/06-02-latest-source-sets-due -m "Merge branch
+      'feat/06-02-latest-source…)
+  ⎿  280 passed in 5.41s
+     70dea33 Merge branch 'feat/06-02-latest-source-sets-due': latest Sourc
+     e sets Due Date and task
+  ⎿  Updated .scratch/06-duplicates-status-and-reingest/issues/02-latest-me
+     eting-sets-due-and-task.md +1 -1
+  ⎿  Updated .scratch/06-duplicates-status-and-reingest/issues/03-correctio
+     ns-merge-and-reingest.md +10 -1
+  ⎿  Updated docs/frd.md +1 -1
+  ⎿  Updated docs/technical_details.md +7 -3
+  ⎿  Updated src/actiontrack/store.py +59 -35
+  ⎿  … +1 file changed
+     tests/test_06_duplicates.py
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Agent(Implement ticket 06-03 merge)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Ticket 02 is merged into the integration branch, and the full suite passes
+  there (280 tests). Ticket 03 is now running in the background in ../at-06-03.
+
+  What ticket 02 changed:
+  - Each Source now stores its own task, Owner as written, Due Phrase and Due
+    Date. A new migration adds these columns and fills them in for existing
+    databases.
+  - An item's task and Due Date are now worked out from all its Sources, so they
+    no longer depend on the order notes are ingested. The 01 shortcut is gone.
+  - docs/frd.md FR-9 and docs/technical_details.md are updated to match.
+  - I read the diff myself before merging, and no existing tests changed.
+
+  Gaps:
+  - Removed Due Phrase: if you delete a Due Phrase from a note line and
+    re-ingest, the item keeps its old Due Date. Editing the line counts as a new
+    occurrence, and the old Source stays. That is the known limitation already
+    listed in technical_details §8, so there's no test that the date clears.
+  - Meeting Date ties: a tie is broken by the note's full path rather than just
+    the file name. The two only differ when notes come from different folders.
+  - Migration backfill: the subagent checked it on a hand-built old database,
+    but no test covers it.
+
+  Ticket 03 handles the remaining case: a correction, such as a roster change,
+  makes two existing items identical. They merge into the lower id, and the
+  merged item is Done if either part was Done. Today this situation stops the
+  run with a database error; after 03 it should merge cleanly. I've written the
+  exact place to fix and the approach into ticket 03's file.
+
+✻ Worked for 43s · done 12:18 AM
+
+› Message from general-purpose
+  Ticket 03 is done on `feat/06-03-merge-and-reingest`. The full suite passes
+  (288 tests, up from 283) and the branch is already up to date with the
+  integration branch.
+
+  Commits:
+  - `6cf868d` test: corrections merge items into the lower id; re-ingest is
+  idempotent (FR-11, FR-10). Committed red on purpose; the merge tests fail at
+  this commit.
+  - `aac7294` feat(store): merge items whose keys collide after a re-resolved
+  Source (FR-11)
+  - `1d9f1b1` test: sample repeats collapse into single items (FR-9, FR-10)
+
+  **How it works**
+  - When a known Source is re-resolved and its new key matches another live
+  item, the two merge into the lower id. This is one private helper,
+  `Store._merge_items`, in `store.py`.
+  - The helper retires the loser first, so `items_live_key` is never tripped.
+  - It also repoints any items already merged into the loser, moves the Sources,
+  drops the loser's owner rows and carries Done over. It then calls
+  `_derive_item_fields(survivor)`; no fields are copied by hand.
+  - Both directions work: the re-resolved line's item can be the lower or the
+  higher id.
+  - `RecordResult` gets a `merged: bool` field. `ingest.py` counts `duplicate +
+  merged` into `items_merged`, and owner report entries carry `result.item_id`,
+  which is the survivor.
+  - I updated the `record_occurrence` docstring and the `IngestReport`
+  docstring.
+
+  **Docs:** `docs/frd.md` and `docs/technical_details.md` §4.1 already described
+  the merge behaviour, so I left them unchanged.
+
+  **Tests**
+  - `tests/test_06_duplicates.py` has four new tests:
+    - A roster change makes an Unknown item equal a Person item. It runs in four
+  cases (merged-away item with the higher or lower id, Done in either part) and
+  checks one live item with id 1, both Sources, Done and `items_merged` 1.
+    - A new item after a merge gets id 3.
+    - Re-ingest gives byte-identical `list --json` with zero new, merged or
+  done.
+    - An overlapping folder adds only the new occurrences and keeps existing
+  ids.
+  - `tests/test_sample_notes.py` has one new test covering the four
+  sample-fixture items (quote, SSO, Q4 cloud spend, invoice-edit freeze).
+  - I changed no existing tests.
+
+  **Left uncovered**
+  - `done_at` is not in `list --json`, so "Done from [X] on 2026-10-02" is
+  asserted as status Done plus the checked 10-02 Source, not as the date itself.
+  - An owner report entry written earlier in the same run can still name the
+  merged-away id. That happens if an earlier line of the loser was re-recorded
+  before the merge. It is rare, and I did not fix it.
+
+
+
+⏺ Ticket 03 is reported done. I'll verify it, then merge.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Implement ticket 06-03 merge" finished · 1m 51s
+
+⏺ The diff looks clean, so I'm merging it and then running a code review across
+  the full integration branch. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      merge --no-ff feat/06-03-merge-and-reingest -m "Merge branch
+      'feat/06-03-merge-and-reinges…)
+  ⎿  288 passed in 5.41s
+           12
+  ⎿  Updated .scratch/06-duplicates-status-and-reingest/issues/03-correctio
+     ns-merge-and-reingest.md +1 -1
+  ⎿  Updated src/actiontrack/ingest.py +2 -2
+  ⎿  Updated src/actiontrack/store.py +31 -5
+  ⎿  Updated tests/test_06_duplicates.py +71
+  ⎿  Updated tests/test_sample_notes.py +27
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Skill(mattpocock-skills:code-review)
+  ⎿  Loaded skill
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Standards review of spec 06
+   └ Spec review of spec 06
+
+⏺ All three tickets are merged into feat/06-duplicates-status-and-reingest, and
+  the full suite passes there (288 tests). Two reviewers are now checking the
+  branch against main: one against the repo's coding standards, one against spec
+  06.
+
+  What ticket 03 added: when a correction such as a roster change makes two
+  existing items the same, they now merge into the lower id instead of stopping
+  the run with a database error.
+  - The higher id stays as a pointer to the item it was merged into.
+  - Its Sources move to the surviving item, and the result is Done if either
+    part was Done.
+  - It works whichever of the two items the corrected line belonged to.
+  - New tests show that re-ingesting the same folder changes nothing (list 
+    --json output is byte-identical) and that an overlapping folder adds only
+    the new lines.
+  - The four sample-notes checks from spec 06 pass.
+  - I read the diff myself before merging, and no existing tests changed.
+
+  Still open after ticket 03:
+  - Wrong id in the report: if a merge happens partway through a run, an owner
+    warning printed earlier in that run can still show the id that was just
+    merged away. It's rare, and I'll fix it if the reviewers confirm it.
+  - Done date: list --json doesn't include the Done date, so "Done on
+    2026-10-02" is checked indirectly, through the item's Done status and its
+    ticked 10-02 Source.
+  - Commits that fail tests: each ticket committed its tests before the code
+    that makes them pass, so those intermediate commits fail git bisect. I've
+    left the history as it is because the test-first commits show the order of
+    the work. I can squash each test commit into its code commit before merging
+    to main if you'd rather every commit passes.
+
+  When the reviews come back I'll fix what they find in one change, set spec 06
+  to Status: done, and remove the three ticket worktrees.
+
+✻ Cogitated for 54s · done 12:21 AM
+
+› Message from general-purpose
+  Review of `git diff main...HEAD` (12 commits, specs 06-01 to 06-03). No edits
+  made. I did not run pytest.
+
+  **(a) Documented-standard breaches**
+
+  Hard:
+  1. **GLOSSARY.md, `Source` entry (stale).** It still says "its latest Source
+  sets its Due Date". FR-9 now says the latest Source that has a Due Phrase sets
+  the Due Date, and the task comes from the latest Source. CLAUDE.md: "update
+  `GLOSSARY.md` when a term changes".
+  2. **Commits must cite FR/NFR ids (docs/nfrd.md, NFR-9).** Two commits don't:
+  `fb03a05 feat(dedupe): collapse repeats...` and `459a3e7 test: sample Due
+  Dates...`. The three merge commits also cite none.
+  3. **Spec 06 status (CLAUDE.md, "set `Status: done` when a spec's tests
+  pass").** `docs/specs/06-*.md` still reads `Status: ready-for-agent`. The
+  branch looks complete, so this is probably only a reminder before merge.
+
+  Softer:
+  4. **docs/technical_details.md schema section.**
+     - It shows `dedupe_key TEXT NOT NULL`, but the migration adds the column
+  nullable. The migration comment explains why, and the doc doesn't say so.
+     - The `sources` block shows the new columns, but its `-- PRAGMA
+  user_version = 1` header is not updated for the two appended migrations.
+  5. **docs/frd.md FR-12** says "items merged as Duplicates". `items_merged` now
+  also counts FR-11 correction merges (`result.duplicate + result.merged`).
+  Only the `ingest.py` docstring records that.
+
+  Conforming, no action needed:
+  - Migrations are appended, not edited.
+  - Report keys are add-only.
+  - SQL stays in `store.py`.
+  - `dedupe_key` is pure and sits in `items.py`, as the module table says.
+  - Tests go through the CLI seam and cite ids.
+  - `docs/frd.md` and `technical_details.md` were updated with the behaviour
+  change.
+
+  **(b) Smells (judgement calls)**
+
+  - **Primitive Obsession:** `RecordResult` carries three booleans (`new_item`,
+  `duplicate`, `merged`) that are effectively one outcome. The code even has
+  `new_item=row is None and not duplicate`, and `ingest.py` adds bools:
+  `result.duplicate + result.merged`. An outcome enum would be clearer.
+  - **Primitive Obsession and Data Clumps:** `dedupe_key(owner_kind: str,
+  persons, written_owner, task)` takes loose pieces of an owner `Resolution`.
+  The caller passes `owner.kind.value`, and `_NAMED_OWNER_KINDS` matches on
+  strings. Passing the `Resolution` would remove this.
+  - **Data Clumps:** `(task, written_owner, due_phrase, due_date)` appears
+  together in the migration `UPDATE`, the `sources` upsert,
+  `_derive_item_fields`, and the `UPDATE items`. A small `SourceFields` type
+  would help.
+  - **Mysterious Name:** in `_derive_item_fields`, positional `s[2]`, `s[3]` and
+  `task, written_owner, *_ = sources[0]` hide what the columns are. In
+  `record_occurrence`, `row`, `other` and `live` hide what they mean.
+  - **Duplicated Code:** `record_occurrence` runs the `SELECT id FROM items
+  WHERE dedupe_key = ? AND merged_into IS NULL` shape twice, once with `id !=
+  ?`. A `_live_item_with_key(key, excluding=None)` helper would cover both.
+  - **Long method (not on the list):** `record_occurrence` now covers three
+  branches (known line, duplicate, new item) plus upsert, derive, owner and
+  done. It is hard to read.
+  - **Duplicated Code (tests):** the `files()` helper appears in
+  `test_06_duplicates.py` and again inline in `test_sample_notes.py`.
+  `_unknown_and_person` is hard to follow because of its double-ternary
+  `unknown_first` logic.
+
+  Files: `/Users/coditas/Desktop/Personal/Ai
+  Session/Action-Tracker/src/actiontrack/store.py`, `items.py`, `ingest.py`,
+  `GLOSSARY.md`, `docs/technical_details.md`, `docs/frd.md`,
+  `docs/specs/06-duplicates-status-and-reingest.md`.
+
+⏺ The standards review is back. I'll wait for the spec review before fixing
+  anything, so all the fixes go in one change.
+✻ Cogitated for 2s · done 12:21 AM
+
+⏺ Agent "Standards review of spec 06" finished · 34s
+
+› Message from general-purpose
+  Verdict: no requirement is missing or wrong, and `pytest` passes (288 tests).
+  I read the diff and the tests but ran no ad-hoc CLI scenarios, so everything
+  below comes from reading.
+
+  **(a) Missing or partial**
+  - None found for FR-9 to FR-12 and spec stories 1-15 and 17-20. Story 16, "#14
+  was merged into #9", is spec 08 and out of scope. The store does set
+  `merged_into` and `list` filters merged items out.
+  - Partial: "Done is set once (Done-at, Done-by = note or cli)". Done-at is the
+  Meeting Date of the first checked Source *ingested*, not the earliest one.
+  This only matters if a checked later note is processed before an earlier one.
+  FR-9 requires order-independence only for Due Date and task, so this is not a
+  violation. The sample's "Done from `[X]` on 2026-10-02" holds.
+  - Minor deviation: `dedupe_key` is a nullable column, but
+  `technical_details.md` §3 still says `NOT NULL`. Ticket 01 chose nullable on
+  purpose and says rows from before spec 06 get their key on the next ingest.
+  Nothing was changed to reconcile the doc.
+
+  **(b) Scope creep**
+  - Essentially none.
+  - The migration that backfills per-Source `task`, `written_owner`,
+  `due_phrase` and `due_date` was recommended in ticket 02.
+  - `tests/test_03_due_dates.py` changed three expected Due Dates in
+  `SAMPLE_DUES`, for example `2026-09-04` to `2026-09-11`. That is a consequence
+  of FR-9 (the item shows its latest Source's date). It is not unrelated drift.
+  - The `docs/frd.md` FR-9 rewrite and the `technical_details.md` edits were
+  both requested.
+
+  **(c) Implemented but possibly wrong (low severity)**
+  1. Spec: "Merge: after updates, any two live items with the same key merge."
+  The merge only runs in the known-Source branch of `Store.record_occurrence`,
+  which re-checks the key for the one occurrence being processed. An item's key
+  is overwritten by whichever of its Sources was processed last. If an edit
+  makes two Sources of one item resolve to different keys, such as a note whose
+  attendees changed, the item's key depends on processing order. Un-merging is
+  explicitly out of scope, so this is an accepted limitation. It could leave
+  `list --json` unstable across re-ingests in that edge case.
+  2. Ticket 03: "Owner report entries (`item_id`) name the surviving id."
+  `_report_owner` records `result.item_id` at the moment each occurrence is
+  processed. An earlier occurrence in the same run that was reported under the
+  loser's id keeps that id after the merge. This is a narrow case, and I found
+  no test for it.
+  3. Legacy rows get no key until their Source is re-seen. A new, unseen
+  occurrence can therefore fail to match an unmigrated item and create a copy.
+  The next ingest's known-Source path then collides and merges it, so this
+  self-heals.
+
+  No change to `notes/`; I edited nothing.
+
+⏺ Both reviews are in. Before deciding what to fix, I'll check one claim: that
+  commits must cite FR ids.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Spec review of spec 06" finished · 1m 6s
+
+⏺ The commit-citation rule in docs/nfrd.md:52 is real, and two merged commits
+  break it; I won't rewrite history, so the fix commits will cite ids. The small
+  real findings go to one implementer, and I'm leaving out the rest. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent(Apply spec 06 review fixes)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Both reviews are done, and one agent is now applying the fixes in ../at-06-04.
+
+  Standards
+
+  Hard breaches:
+  - GLOSSARY.md still says "its latest Source sets its Due Date". The new FR-9
+    rule is the latest Source that has a Due Phrase.
+  - Two commits don't cite an FR id, which docs/nfrd.md requires: fb03a05 and
+    459a3e7.
+  - Spec 06 still reads Status: ready-for-agent.
+
+  Softer:
+  - technical_details §3 shows dedupe_key as NOT NULL, but the migration adds it
+    nullable. Its user_version = 1 header is also stale.
+  - FR-12's count wording doesn't mention merges caused by corrections.
+
+  Judgement calls:
+  - RecordResult has three yes/no flags where one outcome value would do.
+  - The same four fields keep travelling together.
+  - _derive_item_fields reads columns by position (s[2], s[3]).
+  - The "live item with this key" lookup is duplicated.
+  - record_occurrence is getting long.
+
+  Spec
+
+  Every FR-9 to FR-12 requirement is implemented, and there is no scope creep.
+  Low-severity points:
+  1. Merging only runs for the occurrence being processed. If two Sources of one
+     item ever resolve to different keys, the item's key depends on processing
+     order. That would need un-merging, which the spec puts out of scope.
+  2. An owner warning written earlier in a run can still name an id that a later
+     merge in the same run retires.
+  3. Rows from before spec 06 get their key only when their line is seen again.
+     Until then a new repeat can create a copy, which merges on the next ingest.
+
+  Summary: Standards has 5 documented findings and 7 judgement calls; the worst
+  is the stale glossary entry. Spec has no missing requirements and 3
+  low-severity concerns; the worst is the report naming a dead id.
+
+  Being fixed now
+
+  - Wrong id in the report: test-first, so every reported item_id is the live
+    one at the end of the run.
+  - Duplicated lookup: one small helper replaces it.
+  - Reading by position: named fields in _derive_item_fields.
+  - Docs: the glossary, FR-12 and technical_details §3 corrections.
+
+  Not fixing
+
+  - Three yes/no flags, the four fields, the long function: I'm not adding the
+    outcome type, a fields type or a split of record_occurrence. It's still
+    readable, and each would add code without fixing a bug.
+  - dedupe_key inputs: it keeps taking plain values so items.py stays pure, as
+    the module table says.
+  - The two commits without FR ids: they're already merged, and rewording them
+    would mean rewriting merged history. The fix commits will cite ids.
+  - Key order dependence: this is review point 1, left because it would need
+    un-merging.
+  - Done date: it is the Meeting Date of the first ticked Source ingested, not
+    the earliest one. That only matters if a later note is ingested before an
+    earlier one. The date isn't in list --json, and the spec only requires Due
+    Date and task to be independent of order.
+
+  After the fix agent reports back, I'll merge it, set spec 06 to Status: done,
+  and remove the ticket worktrees. I won't push or merge into main until you say
+  so.
+
+✻ Cooked for 44s · done 12:22 AM
+
+› Message from general-purpose
+  All four review fixes are in on `feat/06-04-review-fixes`, and the full suite
+  passes (289 tests) after merging `feat/06-duplicates-status-and-reingest`.
+  That merge was a no-op, since the integration branch had no new commits.
+
+  Commits:
+  - `3932840` fix(ingest): report the surviving id after a merge (FR-12, FR-11)
+    - The new test
+  `test_an_owner_report_names_the_surviving_id_after_a_later_merge_fr12_fr11`
+  failed first, with `('a.md', 2) != ('a.md', 1)`. It is a CLI-only test that
+  uses a re-ingest with a changed Attendees line to set up the merge.
+    - The fix adds `Store.live_id` (SQL stays in `store.py`). `ingest.run` calls
+  it on every owner-report entry before the transaction ends.
+    - One lookup of `merged_into` is enough, because `_merge_items` already
+  repoints older merge chains.
+  - `f30e2dd` refactor(store): one live-item-by-key query, named columns in
+  _derive_item_fields (NFR-9)
+    - `record_occurrence` now uses one private `_live_with_key(key,
+  excluding=0)` helper in both places.
+    - `_derive_item_fields` uses named unpacking, with no behaviour change.
+  - `2de8b49` docs: align Source, items_merged and dedupe_key wording with the
+  code (FR-9, FR-11, FR-12)
+    - The Source entry in `GLOSSARY.md` now matches FR-9.
+    - The FR-12 counts line in `docs/frd.md` now covers items merged by a
+  correction (FR-11) as well as Duplicates.
+    - `docs/technical_details.md` §3 shows `dedupe_key` as nullable, with the
+  reason: rows from before spec 06 get their key on the next ingest.
+    - The `docs/technical_details.md` §3 header now says `user_version = 5`,
+  counted from the five `_MIGRATIONS` entries.
+
+  No Co-Authored-By or "Generated with" trailers were added.
+
+⏺ The review fixes are reported done. I'll verify, merge, mark spec 06 done, and
+  clean up.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Apply spec 06 review fixes" finished · 1m 32s
+
+⏺ The fix is clean and small. Now I'll merge it, run the suite, and mark spec 06
+  done.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      merge --no-ff feat/06-04-review-fixes -m "Merge branch
+      'feat/06-04-review-fixes': spec 06…)
+  ⎿  289 passed in 6.54s
+     Deleted branch feat/06-01-repeats-collapse (was 459a3e7).
+     Deleted branch feat/06-02-latest-source-sets-due (was 2b1ef9f).
+     … +23 lines (ctrl+o to expand)
+  ⎿  Updated GLOSSARY.md +1 -1
+  ⎿  Updated docs/frd.md +1 -1
+  ⎿  Updated docs/specs/06-duplicates-status-and-reingest.md +1 -1
+  ⎿  Updated docs/technical_details.md +2 -2
+  ⎿  Updated src/actiontrack/ingest.py +3
+  ⎿  … +2 files changed
+     src/actiontrack/store.py
+     tests/test_06_duplicates.py
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Spec 06 is built and marked done on the integration branch
+  feat/06-duplicates-status-and-reingest. The full suite passes (289 tests, up
+  from 255 on main). I haven't merged it into main or pushed anything.
+
+  What it does now:
+  - Repeats collapse: an item repeated across meetings becomes one item with
+    several Sources. Small wording differences, such as case, punctuation,
+    a/an/the or a different Due Phrase, are still recognised as the same item.
+  - Due Date and task: the Due Date comes from the latest meeting that gives
+    one, and a later mention with no date keeps the existing one. The task text
+    comes from the latest meeting. The result doesn't depend on the order notes
+    are ingested.
+  - Done: a tick in any meeting marks the item Done, and it stays Done.
+  - Re-ingest: running ingest again on the same folder changes nothing.
+  - Corrections: when a fix such as a roster change makes two items identical,
+    they merge into the lower id, and the merged item is Done if either part
+    was.
+  - Report: the ingest report now fills in items_merged and items_done.
+
+  How it was built: three tickets, each built test-first in its own worktree and
+  merged with --no-ff. Then I ran a two-reviewer code review (coding standards
+  and spec) and fixed what it found in a fourth branch. The fixes:
+  - The ingest report could name an item id that a later merge in the same run
+    had removed; it now names the surviving id, with a test.
+  - A duplicated database lookup became one helper.
+  - Docs that had drifted were corrected: GLOSSARY.md, FR-12 in docs/frd.md, and
+    §3 of docs/technical_details.md.
+
+  The worktrees and ticket branches are removed, and the working tree is clean.
+
+  Known limits, all accepted under spec 06's out-of-scope list:
+  - Deleted Due Phrase: if you delete a Due Phrase from a note line, the item
+    keeps its old Due Date, because the old version of the line stays as a
+    Source.
+  - Diverging Sources: if an edit makes two Sources of one item resolve to
+    different Owners, which version the item keeps depends on processing order.
+    Fixing that would need un-merging.
+  - Done date: this is the date of the first ticked line ingested, not the
+    earliest one. It isn't shown anywhere yet.
+
+  Git history:
+  - Missing FR ids: two early commits, fb03a05 and 459a3e7, don't cite an FR id,
+    which docs/nfrd.md asks for. I left them because rewording would mean
+    rewriting merged history.
+  - Failing test commits: each ticket's test commit lands before the code that
+    makes it pass, so those commits fail tests (the TDD order).
+
+  Should I merge feat/06-duplicates-status-and-reingest into main with --no-ff,
+  like specs 01–05? main is also still 27 commits ahead of origin; tell me if
+  you want it pushed. After that, specs 07 (list) and 08 (done) can be built in
+  parallel.
+
+✻ Worked for 15m 8s · done 12:24 AM
+
+❯ ok so whats teh status of the spec is it done and merged?                     
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 06 is done, but it is not merged into main yet.
+
+  - Done: the spec is marked Status: done and all 289 tests pass on its branch.
+  - Not merged: all the work sits on feat/06-duplicates-status-and-reingest, 17
+    commits ahead of main. main is still at 66ff589, the spec 05 merge.
+  - Not pushed: nothing has been pushed either, and main alone is still 27
+    commits ahead of origin.
+
+  I held off because merging into main is your call. Say "merge" and I'll merge
+  it into main with --no-ff, like specs 01–05, and run the tests on main. Say
+  "merge and push" if you also want origin updated.
+
+✻ Churned for 6s · done 12:25 AM
+
+❯ merge it with main and push currrent changes                                  
+
+  Pushed to main (ctrl+o to expand)
+
+⏺ Spec 06 is merged into main and pushed. All 289 tests pass on main.
+
+  - Merge: 189c1fa merges feat/06-duplicates-status-and-reingest with --no-ff,
+    like specs 01–05.
+  - Push: origin/main moved from 9af5e74 to 189c1fa, so the 27 older commits and
+    spec 06 are now on GitHub.
+
+  Seven local branches are fully merged and can go:
+  feat/06-duplicates-status-and-reingest, feat/01 to feat/05, and
+  docs/specs-index. Tell me if you want them deleted.
+
+  Next, specs 07 (list) and 08 (done) are both ready and can be built in
+  parallel.
+
+✻ Cooked for 21s · done 12:26 AM
+
+❯ lets build spec 7 in this session using /mattpocock-skills:implement-spec     
+
+⏺ Skill(mattpocock-skills:implement-spec)
+  ⎿  Loaded skill
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Spec 07's blocker (06) is done and no branch has claimed it. A list command
+  already exists from earlier specs, so I'll see what's there before splitting
+  the spec into tickets.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The existing list command has no filters and its table still has a stale
+  shortcut: comment, so I'm extending it under spec 07 and splitting the work so
+  two tickets can run in parallel after the first. · summary
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      switch -q -c feat/07-list-command main &&
+      D=.scratch/07-list-command/issues && mkdir -p $D…)
+  ⎿  /Users/coditas/Desktop/Personal/Ai Session/Action-Tracker  189c1fa [fe
+     at/07-list-command]
+     /Users/coditas/Desktop/Personal/Ai Session/at-07-01        189c1fa [fe
+     at/07-01-status-filters]
+  ⎿  Created
+     .scratch/07-list-command/issues/01-status-filters-and-ordering.md +29
+  ⎿  Created .scratch/07-list-command/issues/02-owner-filter.md +27
+  ⎿  Created .scratch/07-list-command/issues/03-table-rendering.md +20
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Agent(Implement ticket 07-01 filters)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Spec 07 has started. I created the integration branch feat/07-list-command
+  from main, and ticket 01 is being built in the background in ../at-07-01.
+
+  list already exists from earlier specs, but it prints every item in id order
+  with no filters, so spec 07 extends it. I split it into three tickets:
+
+  ┌─────┬───────────────────────────────────────────┬──────────┬───────────┐
+  │  #  │                  Ticket                   │ Blocked  │   State   │
+  │     │                                           │    by    │           │
+  ├─────┼───────────────────────────────────────────┼──────────┼───────────┤
+  │ 01  │ Status filters, Overdue and ordering      │ none     │ in        │
+  │     │                                           │          │ progress  │
+  ├─────┼───────────────────────────────────────────┼──────────┼───────────┤
+  │ 02  │ --owner filter                            │ 01       │ waiting   │
+  ├─────┼───────────────────────────────────────────┼──────────┼───────────┤
+  │ 03  │ Table columns, latest Source meeting, and │ 01       │ waiting   │
+  │     │  task truncation                          │          │           │
+  └─────┴───────────────────────────────────────────┴──────────┴───────────┘
+
+  - 01 adds --status, --all and --due-before. With no flags, list shows only
+    Open items, Overdue first, then by Due Date, undated last. It also adds
+    overdue (Nd) and days_overdue, exit 2 for bad input, and a message when
+    nothing matches.
+  - 02 lets you filter by full name, roster alias or a unique first name. A
+    first name that matches several people exits 2 and lists them. unassigned
+    shows unowned items, and shared or Team Items appear under each Owner.
+  - 03 adds the latest Source meeting to each row and truncates long tasks with
+    … to fit the terminal.
+
+  Why the order: 02 and 03 both build on the query and command that 01 rewrites.
+  Once 01 is merged, 02 and 03 can run at the same time, because they touch
+  different parts.
+
+  Existing tests: some may change, because list now shows only Open items by
+  default (FR-13). I've asked ticket 01 to report any existing test it changes,
+  and I'll check each one before merging.
+
+  The tickets are in .scratch/07-list-command/issues/.
+
+✻ Churned for 1m 15s · done 12:28 AM
+
+› Message from general-purpose
+  Ticket 01 is done on `feat/07-01-status-filters`. The full suite passes: 306
+  tests, up from 289, with 17 new in `tests/test_07_list.py`. The branch was
+  already based on `feat/07-list-command`, and `git merge feat/07-list-command`
+  said "Already up to date". I re-ran the suite after that merge.
+
+  **Commit:** `efa3cfd feat(list): status and due-before filters, Overdue
+  ordering and days overdue (FR-13, NFR-3)`. It is one commit, not several small
+  ones. Your instruction asked for small commits, and I didn't split it.
+
+  **Existing tests changed (all because FR-13 now defaults to Open-only, orders
+  the list and computes Overdue):**
+  - `tests/conftest.py`: `Harness.items()` now runs `list --json --all`. Every
+  existing test that reads state through it still sees Done items.
+  - `test_list_prints_a_table_of_items_fr13` in `tests/test_02_action_items.py`:
+  the Due Date 2026-10-02 is before the pinned today, so the STATUS cell is now
+  `overdue (13d)` instead of `open`.
+  - `test_table_cells_follow_the_same_rules_as_text_items_fr6` in
+  `tests/test_02_action_items.py`: the expected order is now "Book the room"
+  (due 9 Oct) before "Pick a venue" (undated). Undated items list last.
+
+  **Decision to confirm:** JSON `status` stays `open` or `done`. An Overdue item
+  is `open` with a non-null `days_overdue`, and `null` otherwise. This matches
+  `--status open` including Overdue items (NFR-6). It also meant I didn't have
+  to change the existing tests that assert `status == "open"`. Only the table
+  shows `overdue (Nd)`. I documented this in `docs/frd.md` FR-13, along with
+  exit 2 for bad `--status` or `--due-before`, "No matching items." with exit 0,
+  and that `--all` overrides `--status`. If you'd rather have `"overdue"` as a
+  JSON status value, the change is small, but it breaks about five existing
+  tests.
+
+  **Shape for tickets 02 and 03:**
+  - **`Store.list_items`**: the signature is `list_items(today, *, status=None,
+  due_before=None)`.
+    - **Filters:** `status` is `open`, `overdue`, `done` or `None` for all. The
+  filters are built as a list of SQL `conditions` joined with AND, with named
+  parameters, so ticket 02 only needs to append an owner condition and a keyword
+  argument. Ticket 02 will have to join `item_owners` or filter on `owner_kind`
+  for `unassigned`.
+    - **Ordering:** SQL does the ordering and computes `days_overdue`. Ticket 02
+  must not break it.
+    - **Output:** `StoredItem` gained `days_overdue: int | None`.
+  - **`_cmd_list`**: it calls `db.list_items(options.today, status=None if
+  args.all else args.status or "open", due_before=args.due_before)`. Ticket 02
+  adds `--owner` there; it has to resolve the owner before the store call and
+  exit 2 on failure.
+  - **Parser and helpers:**
+    - **Parser:** the `list` parser uses `choices=LIST_STATUSES`, and
+  `--due-before` uses `type=_day_argument` (argparse turns the error into exit
+  2).
+    - **Helpers:** `_parse_today` became `_parse_day(text, flag)`, shared by
+  `--today` and `--due-before`. The table cell comes from `_status_label` and
+  the JSON status from `_item_status`.
+  - **Table for ticket 03:** `_print_items_table` still has the aligned-columns
+  shortcut, with the "No matching items." early return at the top. Columns,
+  latest Source and truncation are left for ticket 03.
+
+  **Not checked:** I ran only the full pytest suite and did not try the CLI by
+  hand.
+
+⏺ Ticket 01 is reported done. I'll check the changed tests and the query before
+  merging.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Implement ticket 07-01 filters" finished · 2m 21s
+
+⏺ The test changes are justified by FR-13, and the query is clean. There's no
+  __main__ module, so I'll smoke-test through cli.main against the sample notes
+  instead.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ That failure was my shell, not the code: zsh doesn't split $a into words, so
+  each flag set arrived as one argument. I'll re-run with ${=a}.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All five --status, --due-before, error-exit, empty-result and days_overdue
+  cases pass, and I'm merging ticket 01 now with its JSON choice (status stays
+  open/done, lateness in days_overdue), then starting 02 and 03 in parallel.
+  I'll also note in ticket 03 that the Team Item Owner label lists every
+  Attendee and widens the OWNER column. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      merge --no-ff feat/07-01-status-filters -m "Merge branch
+      'feat/07-01-status-filters': stat…)
+  ⎿  306 passed in 10.45s
+     /Users/coditas/Desktop/Personal/Ai Session/Action-Tracker  b3f01ea [fe
+     at/07-list-command]
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated
+     .scratch/07-list-command/issues/01-status-filters-and-ordering.md +1
+     -1
+  ⎿  Updated .scratch/07-list-command/issues/02-owner-filter.md +8 -1
+  ⎿  Updated .scratch/07-list-command/issues/03-table-rendering.md +8 -1
+  ⎿  Updated docs/frd.md +4 -2
+  ⎿  Updated src/actiontrack/cli.py +42 -8
+  ⎿  … +4 files changed
+     src/actiontrack/store.py
+     tests/conftest.py
+     tests/test_02_action_items.py
+     +1 more
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ Spec 08 is being built in parallel at ../at-08-01, which I'm leaving alone,
+  and since both specs touch cli.py and store.py, whichever merges second will
+  have to resolve those conflicts. Next I'm starting tickets 02 and 03. 
+  · summary
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Implement ticket 07-02 owner filter
+   └ Implement ticket 07-03 table
+
+⏺ Ticket 01 is merged into feat/07-list-command and all 306 tests pass there.
+  Tickets 02 (--owner) and 03 (table columns and truncation) are now running in
+  parallel in their own worktrees.
+
+  What ticket 01 added:
+  - Default: list shows Open items only. Overdue items come first, most late
+    first, then items by Due Date, then undated items.
+  - New flags: --status open|done|overdue, --all and --due-before. They combine
+    with AND.
+  - Errors and empty results: a bad --status or date exits 2; no matches prints
+    "No matching items." and exits 0.
+  - Overdue display: the table shows overdue (Nd). In --json, status stays open
+    or done, and a new days_overdue field carries the days late. I accepted that
+    choice because it keeps the JSON contract stable for scripts, and it's
+    documented in FR-13.
+  - I ran it on the sample notes as well as the test suite.
+
+  Existing tests that changed, both because of FR-13:
+  - One table test now expects overdue (13d), because its due date is before the
+    pinned today.
+  - One test's expected order now puts the undated item last.
+  - The test helper items() now runs list --all, so older tests still see Done
+    items.
+
+  Found on the sample run: a Team Item's Owner label lists every Attendee, which
+  made the OWNER column over 100 characters wide. Ticket 03 will fit that
+  column to the terminal width too.
+
+  Spec 08 running elsewhere: another session is building spec 08 (done) in
+  ../at-08-01, and I'm leaving it alone. Specs 07 and 08 both add to cli.py and
+  store.py. Whichever spec merges into main second will need small conflict
+  fixes; docs/specs/index.md lists them as expected.
+
+✻ Crunched for 1m 24s · done 12:32 AM
+
+› Message from general-purpose
+  Ticket 02 (`--owner` filter) is done in /Users/coditas/Desktop/Personal/Ai
+  Session/at-07-02. The full suite passes at 318 tests (12 of them new, in
+  `tests/test_07_list.py`), and it still passes after `git merge
+  feat/07-list-command` (already up to date).
+
+  **Commit**
+  - cb3bd3a `feat(list): --owner filter by full name, alias or unique first
+  name, plus unassigned (FR-13)`
+  - It is a single commit covering the tests, the code and the `docs/frd.md`
+  FR-13 text.
+
+  **Existing tests:** none changed.
+
+  **Code**
+  - `owners.py` gains a public `find_person(name, known, roster)`. It tries an
+  exact full name, then a roster alias, then a first name or `Priya N.`, and
+  reuses `_matching` and `_normalised`.
+  - `Store.attendees()` is the new known-Persons query.
+  - `Store.list_items` takes `owner` and `unassigned` keyword arguments, each
+  adding one SQL condition. Ordering and the `days_overdue` CASE are untouched.
+  - `_cmd_list` resolves `--owner` before the query via a new
+  `_resolve_owner_filter`, which loads the config only when `--owner` is given.
+  No match or several matches raise `UsageError` (exit 2) listing the
+  candidates; for no match it lists all known people.
+  - I stayed out of `_print_items_table`, `StoredSource` and the sources query.
+
+  **docs/frd.md:** the FR-13 `--owner` bullet now states the precedence, the
+  exit 2 on no match or several, and that Ambiguous and Unknown items are never
+  selected.
+
+  **Left uncovered or decided**
+  - I did not set `Status: done` in the ticket file under
+  `Action-Tracker/.scratch/07-list-command/issues/`. It is in the main checkout,
+  outside this worktree, and the auto-mode classifier blocked that edit. It
+  still says `claimed`.
+  - If the database file doesn't exist, `list --owner X` returns "No matching
+  items." with exit 0 instead of exit 2. Resolution happens inside the DB block,
+  and only for an existing database.
+  - `unassigned` is matched case-sensitively, lowercase only, as in the ticket.
+  - A person literally named "Unassigned" could not be selected by `--owner`.
+
+⏺ Ticket 02 is reported done. The Status line in .scratch is mine to update, and
+  the classifier blocking the subagent there was correct. I'll check the diff
+  and merge.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/at-07-02" && git status
+      --short && git log --oneline feat/07-list-command..HEAD && PYTHONPATH=src
+      ../Action-Track…)
+  ⎿  cb3bd3a feat(list): --owner filter by full name, alias or unique first
+      name, plus unassigned (FR-13)
+     318 passed in 10.15s
+     … +143 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to /Users/coditas/Desktop/Personal/Ai 
+     Session/Action-Tracker
+  ⎿  Updated docs/frd.md +7 -8
+      150  ### FR-13 `actiontrack list`
+      151  - With no filters: Open items only (Overdue included).
+      152  - Columns: id, Owner(s), task, due (Due Date, else raw Due Phr
+           ase, else `—`), status (`open`, `overdue (Nd)`, `done`), lates
+           t Source meeting title and date.
+      153 -- Order: Overdue (most late first), then dated items by Due Da
+          -te, then undated items last; ties by id. With `--all`, Done it
+          -ems sort among the rest by Due Date.                          
+      153 +- Order: Overdue (most late first), then Open by Due Date, the
+          +n undated items last; ties by id.                             
+      154  - Filters, combined with AND:
+      155    - `--owner <name>`: full name, alias, or a first name unique
+            among known Persons (all Attendees plus the roster); also `un
+           assigned`. A first name matching several Persons is an error l
+           isting them. A shared or Team Item matches each of its Owners.
+      156    - `--status open|done|overdue`: `open` = not Done (includes
+           Overdue); `overdue` = Open with a Due Date before today; `done
+           ` = Done.
+      157    - `--due-before <YYYY-MM-DD>`: Due Date strictly before that
+            date; undated items excluded.
+      158 -  - `--all`: every status; it overrides `--status`.           
+      159 -  - A bad `--status` value or a bad `--due-before` date is an 
+          -error (exit `2`). An empty result prints `No matching items.` 
+          -and exits `0`.                                                
+      158 +  - `--all`: every status.                                    
+      159  - Owner column: the resolved Persons (every Attendee for a Tea
+           m Item), or `Priya (ambiguous: Priya Nair, Priya Shah)`, `Kara
+           n (unknown)` or `unassigned`.
+      160  - `--json`: an array of item objects with all fields above plu
+           s every Source. Owner fields: `owner_kind` (`person`, `team`,
+           `ambiguous`, `unknown`, `unassigned`), `persons` (full names),
+            `written_owner` (as written) and `candidates` (Ambiguous only
+           ).
+      162 -- JSON `status` is `open` (Overdue included, as in `--status o
+          -pen`) or `done`; `days_overdue` is the whole days past the Due
+          - Date for an Overdue item and `null` otherwise.               
+      161  - Overdue is computed at run time from today (or `--today`), n
+           ever stored.
+      162 
+      163  ## 3. Done
+      164 
+      165  ### FR-14 `actiontrack done <id>`
+      168 -- Marks the item Done and records when. Prints the item.      
+      169 -- Already Done → says so, exit `0`.                           
+      170 -- Merged id → acts on the surviving item (FR-11).             
+      171 -- Unknown id → error, exit `1`.                               
+      166 +- Marks the item Done and records when. Prints the item. `--js
+          +on` prints it in the same shape as one `list --json` element. 
+      167 +- Already Done → says "already done", exit `0`.               
+      168 +- Merged id → acts on the surviving item (FR-11) and says `#14
+          + was merged into #9`.                                         
+      169 +- Unknown id (or no database yet) → error, exit `1`. A non-num
+          +eric id is a usage error, exit `2`.                           
+      170 +- Done is permanent: re-ingesting a note that still shows the 
+          +item unchecked never reopens it (FR-10).                      
+      171 
+      172  ---
+      173 
+  ⎿  Updated docs/nfrd.md +1 -1
+      32 
+      33  ## NFR-6 CLI interface contract
+      34  - Human output goes to stdout and warnings/report problems to s
+          tderr.
+      35 -- `--json` on `list` and `ingest` gives a documented, stable JS
+         -ON shape for scripting. Adding fields is allowed; renaming or r
+         -emoving them is a breaking change.                             
+      35 +- `--json` on `list`, `ingest` and `done` gives a documented, s
+         +table JSON shape for scripting. Adding fields is allowed; renam
+         +ing or removing them is a breaking change.                     
+      36  - Exit codes: `0` success (including ingest runs with Malformed
+           Notes); `1` operation failed (unknown id, draft creation faile
+          d); `2` usage error.
+      37  - `--help` on every command lists its options with one-line des
+          criptions.
+      38 
+  ⎿  Updated docs/specs/08-done-command.md +1 -1
+      1  # 08 — `actiontrack done <id>`
+      2 
+      3 -Status: ready-for-agent                                         
+      3 +Status: done                                                    
+      4  Blocked by: 06
+      5  Requirements: FR-14, FR-10, FR-11
+      6 
+  ⎿  Updated src/actiontrack/cli.py +41 -42
+      30  DEFAULT_DB = Path(".actiontrack.db")
+      31  ENV_DB = "ACTIONTRACK_DB"
+      32  ENV_TODAY = "ACTIONTRACK_TODAY"
+      33 -LIST_STATUSES = ("open", "done", "overdue")                    
+      34 -                                                               
+      33  _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
+      34 
+      35 
+     ...
+       87          "list",
+       88          parents=[_global_options_parser()],
+       89          help="show stored Action Items",
+       92 -        description=(                                         
+       93 -            "Show stored Action Items: Open ones by default, O
+          -verdue first (most late first), "                             
+       94 -            "then by Due Date with undated items last. Filters
+          - combine with AND."                                           
+       95 -        ),                                                    
+       96 -    )                                                         
+       97 -    list_.add_argument(                                       
+       98 -        "--status", choices=LIST_STATUSES, help="only items wi
+          -th this status; open includes Overdue (default: open)"        
+       99 -    )                                                         
+      100 -    list_.add_argument("--all", action="store_true", help="sho
+          -w items of every status (overrides --status)")                
+      101 -    list_.add_argument(                                       
+      102 -        "--due-before", type=_day_argument, metavar="YYYY-MM-D
+          -D", help="only items due strictly before this date"           
+       90 +        description="Show every stored Action Item in id order
+          +.",                                                           
+       91      )
+       92      list_.add_argument("--json", action="store_true", help="pr
+           int the items as a JSON array")
+       93      list_.set_defaults(handler=_cmd_list)
+       94 
+       95 +    done = commands.add_parser(                               
+       96 +        "done",                                               
+       97 +        parents=[_global_options_parser()],                   
+       98 +        help="mark an Action Item Done",                      
+       99 +        description="Mark an Action Item Done for good; re-ing
+          +esting notes never reopens it.",                              
+      100 +    )                                                         
+      101 +    done.add_argument("id", type=int, help="id of the Action I
+          +tem")                                                         
+      102 +    done.add_argument("--json", action="store_true", help="pri
+          +nt the item as JSON")                                         
+      103 +    done.set_defaults(handler=_cmd_done)                      
+      104 +                                                              
+      105      return parser
+      106 
+      107 
+     … +110 lines (ctrl+o to expand)
+  ⎿  Updated src/actiontrack/store.py +33 -34
+      103      """The database could not be opened or written; the run wa
+           s rolled back."""
+      104 
+      105 
+      106 +@dataclass(frozen=True)                                       
+      107 +class DoneResult:                                             
+      108 +    """What `mark_done_by_id` did, for the `done` command (FR-
+          +14)."""                                                       
+      109 +                                                              
+      110 +    item: StoredItem                                          
+      111 +    already_done: bool                                        
+      112 +    redirected_from: int | None  # the id asked for, when it h
+          +ad been merged into `item` (FR-11)                            
+      113 +                                                              
+      114 +                                                              
+      115  @dataclass(frozen=True)
+      116  class RecordResult:
+      117      """What recording one occurrence changed, for the ingest r
+           eport."""
+     ...
+      142      due_phrase: str | None
+      143      due_date: str | None
+      144      done: bool
+      136 -    days_overdue: int | None  # set only when the item is Over
+          -due as of the `today` it was listed with                      
+      145      sources: tuple[StoredSource, ...]
+      146 
+      147 
+     ...
+      248          ).fetchone()
+      249          return row[0] if row else None
+      250 
+      243 -    def live_id(self, item_id: int) -> int:                   
+      244 -        """`item_id`, or the item it was merged into (FR-11); 
+          -merges repoint chains, so one hop is enough."""               
+      245 -        return self._conn.execute("SELECT COALESCE(merged_into
+          -, id) FROM items WHERE id = ?", (item_id,)).fetchone()[0]     
+      246 -                                                              
+      247 -    def list_items(                                           
+      248 -        self, today: date, *, status: str | None = None, due_b
+          -efore: str | None = None                                      
+      249 -    ) -> list[StoredItem]:                                    
+      250 -        """Live (not merged) items matching every given filter
+          -, each with its Sources, in list order (FR-13).               
+      251 +    def live_id(self, item_id: int) -> int | None:            
+      252 +        """`item_id`, or the item it was merged into (FR-11), 
+          +or None if there is no such id.                               
+      253 
+      252 -        `status` is `open` (not Done, Overdue included), `over
+          -due` or `done`; None means every status.                      
+      253 -        `due_before` is an ISO date; items due on or after it,
+          - and undated items, are left out.                             
+      254 -        Overdue means not Done with a Due Date before `today`.
+          - Order: Overdue (most late first), then                       
+      255 -        dated items by Due Date, then undated ones; ties by id
+          -.                                                             
+     … +54 lines (ctrl+o to expand)
+  ⎿  … +4 files changed
+     tests/conftest.py
+     tests/test_02_action_items.py
+     tests/test_07_list.py
+     +1 more
+
+⏺ Agent "Implement ticket 07-02 owner filter" finished · 2m 8s
+
+› Message from general-purpose
+  Ticket 03 (table rendering) is done on `feat/07-03-table-rendering`. The full
+  suite passes with 311 tests (304 before, +5 new, +2 changed). HEAD was already
+  based on `feat/07-list-command`, and the final `git merge
+  feat/07-list-command` reported "Already up to date".
+
+  Commits:
+  - `93f6be2` feat(list): MEETING column, width-fitted table and Source title
+  and date in JSON (FR-13, NFR-6)
+  - `1094791` docs(frd): FR-13 table width fitting and Source title and date
+  fields
+
+  What changed:
+  - **MEETING column:** the table gains a last column showing the latest
+  Source's meeting date, then its title.
+  - **Date first:** I put the date before the title so truncation never hides
+  the date.
+  - **JSON:** `list --json` Sources gain `title` and `meeting_date`. No keys
+  were renamed.
+  - **Store:** `StoredSource` gained `title` and `meeting_date`, read from the
+  notes table in the existing sources query, so SQL stays in `store.py`.
+  - **Width fitting:** the width comes from
+  `shutil.get_terminal_size(fallback=(100, 24))`. If the table is too wide, the
+  widest of Owner, task and meeting loses a character at a time (`…` marks the
+  cut). Each column is cut down to 10 characters at most, so the table can still
+  overflow below that. `--json` is never truncated.
+  - **Cleanup:** the `shortcut:` comment in `_print_items_table` is gone.
+  - **Sample notes:** on `notes/` at `COLUMNS=100` the table fits.
+  - **FRD:** FR-13 now describes the column, the width fitting and the new JSON
+  Source fields.
+
+  New tests, all in `tests/test_07_list.py`:
+  - The table header, with a latest-Source meeting cell checked on an item that
+  has two Sources.
+  - JSON Sources carry the meeting title and date.
+  - A long task is cut with `…` to `COLUMNS=80`, while `--json` keeps it whole.
+  - A Team Item with six Attendees still fits `COLUMNS=100`.
+  - The width falls back to 100 columns when it can't be detected. This one
+  monkeypatches `os.get_terminal_size` to raise `OSError`.
+
+  Existing tests changed:
+  - `tests/test_02_action_items.py::test_list_prints_a_table_of_items_fr13`: the
+  header gains `MEETING`, and the row's trailing cell now includes the meeting.
+  - `tests/test_07_list.py::test_table_shows_overdue_with_days_late_fr13`: the
+  header now uses a shared `TABLE_HEADER`, which includes `MEETING`.
+  - `tests/test_05_owners.py::test_list_owner_column_shows_resolution_fr13`: I
+  added `COLUMNS=200`. With the new column the table is wider than 100
+  characters, so the ambiguous label `Priya (ambiguous: Priya Nair, Priya Shah)`
+  got cut at the default 100-column fallback. The test checks owner labels, not
+  width, so it now pins a wide terminal.
+
+  Not covered:
+  - No test covers a row so narrow that nothing more can shrink.
+  - Narrow terminals will cut the ambiguous Owner label with `…`, as seen with
+  Priya on the sample notes at 100 columns.
+  - `tests/test_07_list.py` is also touched by ticket 02 (at-07-02), so expect a
+  possible textual merge conflict there, most likely at the helper section and
+  the end of the file.
+
+⏺ Agent "Implement ticket 07-03 table" finished · 2m 19s
+
+⏺ Ticket 02 looks right. Ticket 03 is done too. I'll merge 02 first, then 03,
+  and resolve the expected conflict in tests/test_07_list.py.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" && git
+      merge --no-ff feat/07-02-owner-filter -m "Merge branch
+      'feat/07-02-owner-filter': --owner…)
+  ⎿  Auto-merging docs/frd.md
+     Auto-merging src/actiontrack/cli.py
+     CONFLICT (content): Merge conflict in src/actiontrack/cli.py
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated docs/frd.md +5 -3
+  ⎿  Updated src/actiontrack/cli.py +66 -9
+  ⎿  Updated src/actiontrack/owners.py +13
+  ⎿  Updated src/actiontrack/store.py +50 -8
+  ⎿  Updated tests/conftest.py +2 -2
+  ⎿  … +2 files changed
+     tests/test_02_action_items.py
+     tests/test_07_list.py
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ The merge stopped on a conflict in cli.py, and the 02 test line never printed.
+  A file under docs/specs shows an unstaged change I didn't make, so I'm
+  leaving it alone and checking the repo state first. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ HEAD now points at main's tip and the conflict markers are gone, so another
+  session may be working in this checkout. I'm checking that before I do
+  anything else. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Another session on this checkout switched to feat/08-done-command and made a
+  merge commit (fedf8ea), so I'm inspecting whether it absorbed my unfinished 07
+  merge. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Another session sharing this checkout switched it to feat/08-done-command, so
+  my merge landed on their branch and their commit swept in unresolved conflict
+  markers in src/actiontrack/cli.py; main and feat/07-list-command are fine. I'm
+  checking whether feat/08-done-command has been pushed or merged anywhere. 
+  · summary
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The other session's commit fedf8ea is gone from every branch, so nothing
+  broken reached main or origin, though their spec 08 status change was undone
+  too and needs redoing. From now on I'll handle spec 07's merges in my own
+  worktree and leave the shared checkout alone, and I'm telling the spec 08
+  session what happened next. · summary
+  ⎿  “Explain stray merge commit on feat/08 branch” → sent to 
+     action-tracker-27 — another Claude session on this machine
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Cross-session message held by the receiving session (recipient: 
+  @action-tracker-27). Claude in that session hasn't seen it. The usual 
+  cause is that the two sessions are in different permission modes: a 
+  terminal session then asks for approval there, but the desktop app and
+  non-interactive sessions can't ask, so there the message expires 
+  undelivered unless the modes come to match. A session can also be set 
+  to hold every message.
+
+⏺ The shared checkout is back on feat/07-list-command and is clean, but I won't
+  merge there. I'm merging 02 and 03 on a temporary branch in my own worktree
+  and will fast-forward the integration branch in one checked command. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Both sides only append different test sections, so I'll keep both.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 323 tests pass: 318 from ticket 02 plus the 5 new ones from 03. Now I'll
+  commit the merge and fast-forward the integration branch, checking first that
+  the shared checkout is on that branch and clean.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/at-07" && git add
+      tests/test_07_list.py && git commit -q --no-edit && git log --oneline -3
+      && cd ../Action-Tracke…)
+  ⎿  8f1604b Merge branch 'feat/07-03-table-rendering': table columns, widt
+     h fitting and Source meeting
+     3c39d05 Merge branch 'feat/07-02-owner-filter': --owner filter
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated docs/frd.md +4 -3
+  ⎿  Updated src/actiontrack/cli.py +42 -5
+  ⎿  Updated src/actiontrack/owners.py +13
+  ⎿  Updated src/actiontrack/store.py +24 -5
+  ⎿  Updated tests/test_02_action_items.py +2 -2
+  ⎿  … +2 files changed
+     tests/test_05_owners.py
+     tests/test_07_list.py
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+⏺ All three tickets are now on the integration branch, which passes 323 tests.
+  Next I'll close the tickets, remove their two worktrees, and run the review
+  against my own worktree. · summary
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/Action-Tracker" &&
+      D=.scratch/07-list-command/issues && sed -i '' 's/^Status: claimed/Status:
+      resolved/' $D/02-ow…)
+  ⎿  Status: resolved
+     Status: resolved
+     Status: resolved
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated .scratch/07-list-command/issues/02-owner-filter.md +1 -1
+      1  # 02 — `--owner` filter
+      2 
+      3 -Status: claimed                                                 
+      3 +Status: resolved                                                
+      4  Blocked by: 01
+      5  Spec: docs/specs/07-list-command.md (stories 6–10, 16)
+      6  Requirements: FR-13
+  ⎿  Updated .scratch/07-list-command/issues/03-table-rendering.md +1 -1
+      1  # 03 — Table columns, latest Source meeting, and truncation
+      2 
+      3 -Status: claimed                                                 
+      3 +Status: resolved                                                
+      4  Blocked by: 01
+      5  Spec: docs/specs/07-list-command.md (stories 5, 20 Sources, 23)
+      6  Requirements: FR-13, NFR-6
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Standards review of spec 07
+   └ Spec review of spec 07
+
+  Ran 1 shell command, wrote 2 memories (ctrl+o to expand)
+
+⏺ All three spec 07 tickets are merged into feat/07-list-command, and the full
+  suite passes there (323 tests). The standards and spec reviews are running
+  now.
+
+  What's merged:
+  - --owner: filters by full name, then roster alias, then a unique first name.
+    If several people match, it exits 2 and lists them. unassigned selects items
+    with no Owner, and shared or Team Items appear under each of their Owners.
+  - Table: a new MEETING column shows the date and title of the item's latest
+    Source. The table is fitted to the terminal width, with a 100-column
+    fallback, and long cells are cut with …. --json is never cut, and each
+    Source in it now includes its meeting title and date.
+  - Merge conflict: merging the two branches conflicted in
+    tests/test_07_list.py, because each ticket appended its own test section to
+    the end. I kept both sections.
+
+  A git incident, caused by me and now cleaned up:
+  - The spec 08 session shares the main Action-Tracker/ checkout with this one.
+    I ran git merge there without checking the branch, at a moment when that
+    session had switched the checkout to feat/08-done-command.
+  - The spec 08 session's next commit then became a broken merge commit with
+    conflict markers in cli.py.
+  - The other session has already reset its branch, and nothing reached main or
+    GitHub. Its "spec 08 done" status commit was lost in that reset, so it needs
+    to redo it. I messaged action-tracker-27, which is probably that session,
+    to explain.
+
+  Changes to how I work:
+  - All my merges now happen in my own worktree, ../at-07, on a temporary
+    branch.
+  - The integration branch is only updated by a fast-forward. That command first
+    checks that the shared checkout is on the right branch and has no
+    uncommitted changes.
+  - I saved this as a memory so future sessions follow it.
+
+  Left uncovered by the tickets:
+  - If the database doesn't exist yet, list --owner Bob prints "No matching
+    items." and exits 0 instead of 2.
+  - In a narrow terminal, a long ambiguous Owner label can be cut with ….
+
+  I'll fix whatever the reviews turn up, then mark spec 07 done.
+
+✻ Brewed for 2m 57s · done 12:36 AM
+
+⏺ My message to the other session (action-tracker-27) was held, not delivered.
+  That session hasn't seen it, probably because it runs in a different
+  permission mode and is waiting for its user to approve incoming messages. I
+  won't resend.
+
+  If you're running the spec 08 session yourself, here's what it needs to know:
+
+  - Spec 08 status lost: its Status: done change for spec 08 was lost when
+    feat/08-done-command was reset to e7a2b54, so that commit needs redoing.
+  - Stray merge was mine: the bad merge commit fedf8ea came from my git merge
+    running in the shared checkout. It is no longer on any branch, and nothing
+    reached main or GitHub.
+  - Merging into main: specs 07 and 08 both change cli.py, store.py and
+    conftest.py. Whichever spec merges into main second needs to keep both sides
+    of each conflict.
+
+  The code review for spec 07 is still running. I'll report its findings and the
+  fixes when it finishes.
+
+✻ Sautéed for 4s · done 12:37 AM
+
+› Message from general-purpose
+  Review of `feat/07-integrate` vs main (7 commits, 8 files). I changed nothing.
+  No hard violations of NFR-1, NFR-2, NFR-3 or NFR-9, and no direct SQL outside
+  `store.py`. Details below.
+
+  **Hard violations**
+
+  None clear-cut. Two near-misses:
+
+  1. `docs/specs/07-*.md` still says `Status: ready-for-agent`. CLAUDE.md "Read
+  before working" says to set `Status: done` when a spec's tests pass. If the
+  tests pass, this is a missed required edit. I did not run the tests, and the
+  diff does not touch `docs/specs/`.
+  2. `tests/conftest.py`: `Harness.items()` now runs `list --json --all`. The
+  signature is unchanged, but docs/specs/index.md "Shared hotspots" says not to
+  change existing helpers' signatures, and this changes what the helper returns.
+  It is defensible, because the default `list` no longer shows Done items, and
+  the docstring was updated. I would flag it as a low-severity breach of the
+  spirit of the rule.
+
+  **Checked and conforming**
+  - Commits: all cite FR/NFR ids.
+  - docs/frd.md: updated in the same change (FR-13).
+  - Tests: only the CLI seam is used (NFR-5). The only imports are `from
+  conftest import …`, which is harness code, not internals.
+  - NFR-6: JSON fields are only added (`days_overdue`, `title`, `meeting_date`),
+  and `status` stays `open|done`.
+  - NFR-3: ordering is deterministic, with ties broken by id.
+  - SQL: confined to `store.py`. `owners.find_person` is pure.
+  - `docs/technical_details.md` and GLOSSARY.md were not edited. The glossary
+  has no new term, so this seems fine.
+
+  **Baseline smells (all judgement calls)**
+
+  - **Primitive Obsession / Repeated Switches.** `status` is a bare string
+  checked in two places: `LIST_STATUSES` in cli.py, and `match status: case
+  "open"/"overdue"/"done"` in `store.list_items`. If a status is added, both
+  need editing. The `UNASSIGNED = "unassigned"` sentinel is also in cli.py.
+  `args.owner == UNASSIGNED` is passed to the store as a separate `unassigned=`
+  bool, so the owner filter is two parameters (`owner`, `unassigned`) that
+  really describe one concept.
+  - **Divergent Change / long method.** `Store.list_items` mixes filter
+  building, a source query, an owner query and item assembly. The overdue SQL
+  fragment `{overdue}` is interpolated twice, into the SELECT and the ORDER BY.
+  That is fine because it is a constant, not user input, but it is dense.
+  Likewise `_print_items_table` does row building, width fitting and printing in
+  one function. The shrink loop could be a helper such as `_fit_widths`.
+  - **Mysterious Name.** `flexible = (1, 2, 5)` uses magic column indices tied
+  to the `header` order, so they break silently if the columns are reordered.
+  `_day_argument` returns an ISO string rather than a date. It validates only
+  and could be named `_iso_day_text`.
+  - **Feature Envy (mild).** `_print_items_table` reaches through
+  `item.sources[-1].meeting_date` and `.title`. That is a Message Chain, and it
+  assumes the last source is the latest. The store orders sources by meeting
+  date, so this is correct today but implicit. A `StoredItem.latest_source`
+  property would hide it.
+  - **Duplicated Code (mild).** `_parse_day` and `_day_argument` wrap the same
+  validation twice, once per error type. `find_person` partly duplicates the
+  matching logic in `owners.resolve`, although it reuses `_matching`, `_unique`
+  and `_normalised`.
+
+  Overall the change conforms. The only action items I would raise are the spec
+  `Status:` line and a decision on the `Harness.items()` change.
+
+⏺ The standards review is back. I'll wait for the spec review before fixing
+  anything, so all the fixes go in one change.
+
+✻ Crunched for 2s · done 12:37 AM
+
+⏺ Agent "Standards review of spec 07" finished · 24s
+
+› Message from general-purpose
+  Review of `feat/07-integrate` against `docs/specs/07-list-command.md` (FR-13).
+  The full suite passes (323 tests) and I found no spec-breaking bugs. I also
+  ran the sample notes at `--today 2026-10-15` and confirmed:
+  - `--status overdue` includes "finalise the Q4 sales targets" at 12d.
+  - `--owner "Anita Desai"` includes "agree on the component API" and "decide on
+  the launch date".
+  - `--owner Priya` exits 2 and lists Priya Nair and Priya Shah.
+  - A bad `--due-before` (`2026-13-01`) exits 2.
+  - Overdue items sort most-late first, then dated, then undated.
+
+  **(a) Missing or partial**
+  1. Story 8 says "`--owner Priya` to fail with the list of matching Persons…
+  I'm never shown the wrong person's items", and the spec says "Zero matches or
+  several → exit `2`". `_cmd_list` only resolves `--owner` inside `if
+  options.db.exists():`. With no database, `list --owner Priya` prints "No
+  matching items." and exits 0, so a bad owner is not rejected. This is low
+  risk, but it is a gap against "bad input exits 2".
+  2. Story 23 says "long tasks stay readable in a narrow terminal", and the
+  Table rendering decision says "truncated … to the terminal width". Each of the
+  three flexible columns (Owner, task, meeting) stops shrinking at 10
+  characters (`MIN_FLEXIBLE_WIDTH`). With `COLUMNS=30` the table is still wider
+  than 30, so it overflows rather than fitting.
+  3. `--owner unassigned` is matched case-sensitively. `--owner Unassigned`
+  exits 2 with "matches nobody". The spec does not say whether it is
+  case-insensitive, so this is a minor gap.
+
+  **(b) Scope creep (small)**
+  - `owners.find_person` also accepts `Priya N.` (first name plus surname
+  initial) for `--owner`, because it reuses `_matching`. The spec asks only for
+  full name, alias and unique first name. Ticket 02 said to reuse the existing
+  rules, so this is defensible.
+  - `--owner` error messages list all known people when nothing matches. The
+  spec asks for the candidates to be listed, so this is acceptable.
+  - The Owner and MEETING columns are truncated as well as the task. The spec
+  says only "the task is truncated". The ticket 03 comment accepted this, and
+  `docs/frd.md` documents it.
+  - `_parse_today` was refactored into `_parse_day` and `_day_argument` for
+  reuse. This is needed.
+  - Test edits: `tests/conftest.py` `items()` now passes `--all`, because the
+  default is open-only. `tests/test_02_action_items.py` has a reordered
+  expectation (undated last) and a new header and status expectation.
+  `tests/test_05_owners.py` pins `COLUMNS=200` so the Owner column is not
+  truncated. All of these follow from the spec.
+
+  **(c) Implemented but possibly wrong**
+  - I found none. Specific checks that held:
+    - Overdue is computed at run time and not stored.
+    - The days-overdue calculation is correct.
+    - Merged items are excluded (`merged_into IS NULL`).
+    - `--due-before` is strict and excludes undated items.
+    - `--all` overrides `--status`.
+    - Shared and Team Items appear under each Owner; Ambiguous and Unknown items
+  are not selected by `--owner`.
+    - `--owner` tries exact full name, then alias, then first name.
+    - The MEETING column uses the latest Source by meeting date.
+    - JSON `status` stays `open`/`done` with a non-null `days_overdue` for
+  Overdue items, as agreed.
+    - JSON Sources add `title` and `meeting_date` without renaming any field.
+    - FR-13 in `docs/frd.md` is updated in the same change.
+  - Overdue items are sorted by Due Date and then id. Items with equal lateness
+  are tie-broken by id, as the spec says.
+
+  I did not check the empty `--json` output (`[]`) or `--config` roster alias
+  lookups beyond reading the code. My temp database `/tmp/rv07.db` is deleted.
+
+⏺ Both reviews are back. The fixes are small, so one implementer will do them in
+  my own worktree.
+
+⏺ Agent(Apply spec 07 review fixes)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+⏺ Agent "Spec review of spec 07" finished · 54s
+
+⏺ Both reviews of spec 07 are back. Neither found a requirement implemented
+  wrong, and the full suite passes (323 tests). One agent is applying the small
+  fixes now in my own worktree, ../at-07.
+
+  Standards
+
+  No hard breaches of the repo's documented rules. The near-misses:
+  - Spec 07 still reads Status: ready-for-agent. I'll set it to done after the
+    fixes.
+  - The test helper Harness.items() now passes --all. Its signature is
+    unchanged, but it now returns more items than before. It has to, because
+    list now hides Done items by default.
+
+  The code smells raised are all judgement calls:
+  - status is a plain string checked in two places, and --owner arrives as two
+    parameters.
+  - Store.list_items and _print_items_table are long.
+  - The table picks its shrinkable columns by number: (1, 2, 5).
+  - The table assumes sources[-1] is the latest Source.
+  - Date checking and name matching are partly duplicated.
+
+  Spec
+
+  Checked against the sample notes: overdue at 12 days, Anita's items, --owner 
+  Priya exiting 2, ordering, and the JSON contract. All correct. The gaps:
+  1. With no database, list --owner Priya exits 0 instead of 2.
+  2. Below about 10 characters per column, a very narrow terminal still
+     overflows.
+  3. --owner Unassigned (capital U) is rejected.
+
+  Minor additions it noted, all acceptable:
+  - Priya N. works as an --owner value.
+  - A name that matches nobody lists everyone known.
+  - The Owner and MEETING columns are truncated as well as the task.
+
+  Summary: Standards has 2 near-misses and 5 judgement calls; the worst is the
+  stale spec Status line. Spec has 3 gaps and nothing wrong; the worst is
+  --owner passing unchecked when there's no database.
+
+  Being fixed now
+
+  - No database: --owner is checked even then. With no notes ingested, only
+    roster people count, so an unknown or ambiguous name exits 2. This gets a
+    test first.
+  - Case: unassigned is matched case-insensitively. Also test first.
+  - Column picking: the shrinkable columns are found by name, not by number.
+  - Latest Source: reading the latest Source is made explicit.
+  - FR-13: it will state the 10-character minimum per column and that unassigned
+    ignores case.
+
+  Not fixing
+
+  - Narrow terminals: cells shorter than 10 characters would be unreadable
+    anyway. I'm documenting the limit rather than shrinking further.
+  - status as a type, the two-parameter owner filter, splitting the long 
+    functions, renaming _day_argument: each would add code without fixing a bug.
+  - Harness.items(): it's required by the new default.
+  - Priya N. support: it comes from reusing the existing matching rules, which
+    is what ticket 02 asked for.
+
+  After the fixes, I'll fast-forward the integration branch, set spec 07 to
+  Status: done, and remove my worktree. I won't merge into main until you say
+  so.
+
+✻ Brewed for 27s · done 12:38 AM
+› Message from general-purpose
+  All five fixes are done on `feat/07-integrate` in the at-07 worktree. The full
+  suite passes: 326 tests, up from 323, and the working tree is clean. I did
+  not merge anything.
+
+  Commits:
+  - `124e5bf` fix(list): check --owner without a database and accept Unassigned
+  in any case (FR-13)
+  - `a3c79d5` refactor(list): derive flexible columns from header names and add
+  StoredItem.latest_source (FR-13)
+  - `68ba486` docs(frd): FR-13 minimum column width, case-insensitive
+  unassigned, owner check without a database
+
+  What changed:
+  - **Fixes 1 and 2:** I wrote three CLI tests first and saw them fail, in
+  `tests/test_07_list.py`. With no database, `--owner` now resolves against the
+  roster only. No match or several matches exits 2, and no database file is
+  created. `--owner Unassigned` and `UNASSIGNED` now select Unassigned items.
+  - **Fix 3:** the flexible column indices are now derived from the header names
+  (OWNER, TASK, MEETING).
+  - **Fix 4:** I added a `latest_source` property on `StoredItem` that returns
+  the last Source, and the MEETING column uses it. The one-line comment states
+  the store's ordering: Meeting Date, then path, then line.
+  - **Fix 5:** the FR-13 text in `docs/frd.md` now says each truncated column
+  keeps at least 10 characters, so a very narrow terminal can still overflow. It
+  also says `unassigned` is case-insensitive.
+
+  One addition you didn't ask for: the FR-13 text now says the owner check holds
+  with no database, where only the roster is known.
+
+⏺ The fixes are reported done. I'll check the diff, mark spec 07 done in my
+  worktree, and fast-forward the integration branch with the guard.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Agent "Apply spec 07 review fixes" finished · 1m 6s
+
+⏺ The diff is clean and the suite passes (326 tests). Now I'll mark spec 07
+  done, fast-forward the integration branch with the guard, and clean up.
+
+⏺ Bash(cd "/Users/coditas/Desktop/Personal/Ai Session/at-07" && sed -i ''
+      's/^Status: ready-for-agent/Status: done/' docs/specs/07-list-command.md
+      && git add docs/spec…)
+  ⎿  shared checkout on: feat/07-list-command
+     2af71f8 docs(specs): mark spec 07 list command as done (FR-13, NFR-3,
+     NFR-6)
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated docs/frd.md +2 -2
+      150  ### FR-13 `actiontrack list`
+      151  - With no filters: Open items only (Overdue included).
+      152  - Columns: id, Owner(s), task, due (Due Date, else raw Due Phr
+           ase, else `—`), status (`open`, `overdue (Nd)`, `done`), lates
+           t Source meeting date and title (`MEETING` column).
+      153 -- The table fits the terminal width (100 columns when it can't
+          - be detected): the Owner, task and meeting cells are truncated
+          - with `…`, widest first. `--json` is never truncated.         
+      153 +- The table fits the terminal width (100 columns when it can't
+          + be detected): the Owner, task and meeting cells are truncated
+          + with `…`, widest first, but each keeps at least 10 characters
+          +, so a very narrow terminal can still overflow. `--json` is ne
+          +ver truncated.                                                
+      154  - Order: Overdue (most late first), then dated items by Due Da
+           te, then undated items last; ties by id. With `--all`, Done it
+           ems sort among the rest by Due Date.
+      155  - Filters, combined with AND:
+      156 -  - `--owner <name>`: full name, alias, or a first name unique
+          - among known Persons (all Attendees plus the roster); also `un
+          -assigned`. Tried in that order: exact full name, then alias, t
+          -hen first name. A name matching several Persons, or none, is a
+          -n error (exit `2`) listing the candidates. `--owner` never sel
+          -ects Ambiguous or Unknown items. A shared or Team Item matches
+          - each of its Owners.                                          
+      156 +  - `--owner <name>`: full name, alias, or a first name unique
+          + among known Persons (all Attendees plus the roster); also `un
+          +assigned` (case-insensitive). Tried in that order: exact full 
+          +name, then alias, then first name. A name matching several Per
+          +sons, or none, is an error (exit `2`) listing the candidates; 
+          +this holds with no database too, where the known Persons are t
+          +he roster only. `--owner` never selects Ambiguous or Unknown i
+          +tems. A shared or Team Item matches each of its Owners.       
+      157    - `--status open|done|overdue`: `open` = not Done (includes
+           Overdue); `overdue` = Open with a Due Date before today; `done
+           ` = Done.
+      158    - `--due-before <YYYY-MM-DD>`: Due Date strictly before that
+            date; undated items excluded.
+      159    - `--all`: every status; it overrides `--status`.
+  ⎿  Updated docs/specs/07-list-command.md +1 -1
+      1  # 07 — `actiontrack list`: filters, Overdue and ordering
+      2 
+      3 -Status: ready-for-agent                                         
+      3 +Status: done                                                    
+      4  Blocked by: 06
+      5  Requirements: FR-13, NFR-3, NFR-6
+      6 
+  ⎿  Updated src/actiontrack/cli.py +13 -7
+      181      try:
+      182          if options.db.exists():  # a read must not leave a new
+           , empty database behind
+      183              with store.transaction(options.db) as db:
+      184 -                owner = _resolve_owner_filter(args.owner, db.a
+          -ttendees(), options) if args.owner is not None else None      
+      184 +                owner = _resolve_owner_filter(args.owner, db.a
+          +ttendees(), options)                                          
+      185                  stored = db.list_items(
+      186                      options.today,
+      187                      status=None if args.all else args.status o
+           r "open",
+      188                      due_before=args.due_before,
+      189                      owner=owner,
+      190 -                    unassigned=args.owner == UNASSIGNED,      
+      190 +                    unassigned=_is_unassigned(args.owner),    
+      191                  )
+      192 +        else:                                                 
+      193 +            _resolve_owner_filter(args.owner, [], options)  # 
+          +with no database only the roster is known                     
+      194      except store.StoreError as exc:
+      195          _error(str(exc))
+      196          return EXIT_FAILED
+     ...
+      202      return EXIT_OK
+      203 
+      204 
+      203 -def _resolve_owner_filter(written: str, attendees: list[str], 
+          -options: GlobalOptions) -> str | None:                        
+      204 -    """The one known Person `--owner` names (None for `unassig
+          -ned`); no match or several exit 2 (FR-13)."""                 
+      205 -    if written == UNASSIGNED:                                 
+      205 +def _is_unassigned(written: str | None) -> bool:              
+      206 +    return written is not None and written.casefold() == UNASS
+          +IGNED                                                         
+      207 +                                                              
+      208 +                                                              
+      209 +def _resolve_owner_filter(written: str | None, attendees: list
+          +[str], options: GlobalOptions) -> str | None:                 
+      210 +    """The one known Person `--owner` names (None for no filte
+          +r or `unassigned`); no match or several exit 2 (FR-13)."""    
+      211 +    if written is None or _is_unassigned(written):            
+      212          return None
+      213      loaded = _load_config(options)
+      214      roster = loaded.people if loaded else ()
+     ...
+      306              _printable(item.due_date or item.due_phrase or NO_
+           VALUE),
+      307              _status_label(item),
+      308              # Date first, so a truncated title never hides it.
+      303 -            _printable(f"{item.sources[-1].meeting_date} {item
+          -.sources[-1].title}") if item.sources else NO_VALUE,          
+      309 +            _printable(f"{item.latest_source.meeting_date} {it
+          +em.latest_source.title}") if item.sources else NO_VALUE,      
+      310          )
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated src/actiontrack/store.py +4
+      138      days_overdue: int | None  # set only when the item is Over
+           due as of the `today` it was listed with
+      139      sources: tuple[StoredSource, ...]
+      140 
+      141 +    @property                                                 
+      142 +    def latest_source(self) -> StoredSource:                  
+      143 +        return self.sources[-1]  # the store orders Sources by
+          + Meeting Date, then path, then line                           
+      144 +                                                              
+      145 
+      146  class Store:
+      147      """Access to the database inside one open transaction."""
+  ⎿  Updated tests/test_07_list.py +19
+      174      assert ids(owners, "--owner", "unassigned") == [5]
+      175 
+      176 
+      177 +def test_owner_unassigned_ignores_case_fr13(owners: Harness) -
+          +> None:                                                       
+      178 +    assert ids(owners, "--owner", "Unassigned") == [5]        
+      179 +    assert ids(owners, "--owner", "UNASSIGNED") == [5]        
+      180 +                                                              
+      181 +                                                              
+      182 +def test_owner_without_a_database_matches_nobody_and_exits_2_f
+          +r13(harness: Harness) -> None:                                
+      183 +    result = harness.run("list", "--owner", "Priya")          
+      184 +    assert result.code == 2 and "none" in result.err          
+      185 +    assert not harness.db.exists()  # a read must not create t
+          +he database                                                   
+      186 +                                                              
+      187 +                                                              
+      188 +def test_owner_without_a_database_resolves_against_the_roster_
+          +fr13(harness: Harness) -> None:                               
+      189 +    harness.write_roster(("Lena Fischer", ["LF"]), ("Lena Meye
+          +r", []))                                                      
+      190 +    assert harness.run("list", "--owner", "LF").out.strip() ==
+          + "No matching items."                                         
+      191 +    result = harness.run("list", "--owner", "Lena")           
+      192 +    assert result.code == 2 and "Lena Fischer" in result.err a
+          +nd "Lena Meyer" in result.err                                 
+      193 +    assert not harness.db.exists()                            
+      194 +                                                              
+      195 +                                                              
+      196  def test_owner_never_selects_ambiguous_or_unknown_items_fr13(o
+           wners: Harness) -> None:
+      197      owners.write(
+      198          "second.md",
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Spec 07 is done but not yet merged into main. It sits on feat/07-list-command,
+  11 commits ahead of main, marked Status: done, with all 326 tests passing.
+
+  What changed:
+  - Status filters: list shows Open items only by default, Overdue first. You
+    can filter with --status, --all and --due-before.
+  - --owner: filters by full name, alias, unique first name or unassigned. A
+    name that matches several people exits 2 and lists them, and that check now
+    works even before any notes are ingested.
+  - Table: a MEETING column, and fitting to the terminal width.
+  - --json: adds days_overdue and each Source's meeting title and date. No
+    existing field was renamed.
+
+  How it was built: three tickets, then two reviews (standards and spec). The
+  review fixes covered:
+  - the --owner check with no database;
+  - case-insensitive unassigned;
+  - finding the shrinkable columns by name instead of by number;
+  - making the latest Source explicit;
+  - updating the FR-13 docs.
+
+  All worktrees and temporary branches are removed.
+
+  Merging into main will conflict in one file. The other session has already
+  merged spec 08 into main and pushed it (b9fb32b). A trial merge, which changed
+  nothing, shows a conflict only in src/actiontrack/cli.py, where both specs
+  add a subcommand. store.py and docs/frd.md merge cleanly.
+
+  Should I merge spec 07 into main and push? I'd resolve the cli.py conflict by
+  keeping both subcommands, run the full suite on the result, and only push if
+  it passes. I'll do the merge in my own worktree and then fast-forward main, so
+  the shared checkout is never mid-merge.
+
+  Not covered:
+  - A terminal narrower than about 10 characters per column still overflows.
+    FR-13 documents this.
+  - The --owner check with no database only knows the roster.
+
+✻ Worked for 12m 38s · done 12:39 AM
+
+❯ has this been tested? if not run test cases and if passed merge it to main.   
+
+⏺ Yes: spec 07's branch passes all 326 tests on its own. What hasn't been tested
+  yet is spec 07 combined with spec 08, which is now on main. I'll do that
+  merge in my own worktree, resolve the conflict, and run the full suite on the
+  result. Only if it passes will I move main.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Both sides only add functions, so I'm keeping both, with spec 07's --owner
+  helpers first and spec 08's _cmd_done after. Then I'll run the full suite,
+  since done builds the item objects whose fields spec 07 changed. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Eleven of spec 08's done tests fail after the merge, because spec 08 builds
+  item objects without the fields spec 07 added; I'm checking how spec 08 builds
+  them. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The cause is a call in mark_done_by_id that runs list_items(), which now needs
+  today as an argument, so I'm passing through the when value it already
+  receives. · summary
+
+⏺ Update(~/Desktop/Personal/Ai Session/at-07-main/src/actiontrack/store.py)
+  ⎿  File must be read first
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ All 341 tests pass on the merged result: spec 07, spec 08 and the one-line
+  fix. Before committing, a quick smoke run of ingest, list and done together on
+  the sample notes.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The end-to-end flow works on the sample notes, with item 3 showing under done
+  after marking it. I'm committing the merge, with the store.py fix explained in
+  the message, and then moving main with the same guard. · summary
+
+  Ran 2 shell commands · 1 failed (ctrl+o to expand)
+
+⏺ Git refuses because it checks against the current branch
+  (feat/07-list-command), not main. I'll confirm the branch is fully contained
+  in main before force-deleting it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Yes, it's tested, and it's now merged into main as 9f755a1. All 341 tests pass
+  on the combined spec 07 + spec 08 code.
+
+  What the testing caught: spec 07's branch passed its 326 tests on its own. But
+  main already had spec 08, so I also tested the two combined, and 11 of spec
+  08's done tests failed. Spec 08's done asked the store for items without
+  passing today's date, which spec 07 had made required. Git merged that file
+  without a conflict; only the tests showed it. The fix is one line, and it's
+  explained in the merge commit message.
+
+  Other checks:
+  - Conflict in cli.py: both specs added functions at the same spot, so I kept
+    both.
+  - Sample-notes run: I ran ingest, then list --status overdue --owner "Meera 
+    Iyer", then done 3, then list --status done --owner Anita on the sample
+    notes. All gave the expected results.
+  - Shared checkout: the merge was done in my own worktree and main was
+    fast-forwarded, so the shared checkout was never mid-merge.
+
+  Not pushed: main is 12 commits ahead of origin. Say "push" if you want it on
+  GitHub.
+
+  Next: spec 09 (Gmail follow-up drafts) is the last one, and both its blockers
+  (04 and 07) are now done. It adds the mcp dependency, which the project rules
+  already plan for spec 09.
+
+  The spec 08 session's own branch hasn't been checked against this merge. If
+  it's still working, it should rebase or merge the new main before its next
+  merge.
+
+✻ Baked for 1m 34s · done 12:42 AM
+
+❯ is this pushed to remote                                                      
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ No, it isn't pushed. GitHub's main is still at b9fb32b, the spec 08 merge.
+  Local main is 12 commits ahead: spec 07 plus the merge.
+
+  Nothing new has landed on the remote in the meantime, so pushing would be a
+  clean fast-forward with no conflicts. Say "push" and I'll push main.
+
+✻ Crunched for 7s · done 12:42 AM
+
+❯ push it to github                                                             
+
+  Pushed to main (ctrl+o to expand)
+
+⏺ It's pushed. GitHub's main moved from b9fb32b to 9f755a1, and local and remote
+  main now match.
+
+  Specs 01 to 08 are on GitHub. Only spec 09 (Gmail follow-up drafts) is left.
+✻ Sautéed for 12s · done 12:43 AM
+
+※ recap: You're building the actiontrack CLI spec by spec, and specs 01 to 08 are now done, merged into main and pushed to GitHub. Next is spec 09, Gmail follow-up drafts, the last one. (turn off recaps in /config)
