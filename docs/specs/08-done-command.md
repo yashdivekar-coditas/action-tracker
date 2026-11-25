@@ -1,6 +1,6 @@
 # 08 — `actiontrack done <id>`
 
-Status: ready-for-agent
+Status: done
 Blocked by: 06
 Requirements: FR-14, FR-10, FR-11
 
