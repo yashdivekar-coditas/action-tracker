@@ -131,7 +131,7 @@ After every run, print:
 - each Ambiguous Owner (written name, candidates, note), Unknown Owner, and Unassigned item;
 - each unresolved Due Phrase.
 
-Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usage errors (missing folder, bad arguments). Exit `1` if the database fails; the run is rolled back. With `--json`, print the same report as one JSON object with keys `notes_read`, `malformed`, `ignored`, `items_new`, `items_merged`, `items_done`, `notes` (each Meeting Note read: `file`, `title`, `meeting_date`, `attendees`; JSON only), `malformed_notes` (`file`, `reason`), `ambiguous_owners`, `unknown_owners`, `unassigned_items` and `unresolved_due_phrases`. Keys may be added, never renamed (NFR-6). Problems such as Malformed Notes are also written to stderr.
+Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usage errors (missing folder, bad arguments). Exit `1` if the database fails; the run is rolled back. With `--json`, print the same report as one JSON object with keys `notes_read`, `malformed`, `ignored`, `items_new`, `items_merged`, `items_done`, `notes` (each Meeting Note read: `file`, `title`, `meeting_date`, `attendees`; JSON only), `malformed_notes` (`file`, `reason`), `ambiguous_owners` (`file`, `line`, `item_id`, `written_owner`, `candidates` sorted by name), `unknown_owners` (`file`, `line`, `item_id`, `written_owner`), `unassigned_items` (`file`, `line`, `item_id`, `task`) and `unresolved_due_phrases`. Keys may be added, never renamed (NFR-6). Problems such as Malformed Notes are also written to stderr.
 
 ---
 

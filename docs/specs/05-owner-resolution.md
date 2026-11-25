@@ -1,6 +1,6 @@
 # 05 — Owners: resolving written names to Persons
 
-Status: ready-for-agent
+Status: done
 Blocked by: 02, 04
 Requirements: FR-7, FR-12 (owner sections of the report), FR-13 (owner column)
 
