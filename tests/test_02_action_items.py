@@ -237,3 +237,67 @@ def test_same_split_rules_apply_to_action_lines_fr6(harness: Harness) -> None:
     (item,) = harness.ingest_note("ACTION: Lena to run the customer survey, results due 15 October\n")
 
     assert split(item) == ("Lena", "run the customer survey", "15 October")
+
+
+# --- re-ingest and status across runs (FR-10, FR-11, FR-3) -------------------------
+
+NOTE_HEADER = "# Meeting: Sync\nDate: 2026-09-01\n\n"
+
+
+def test_reingest_creates_no_new_items_and_keeps_ids_fr11(harness: Harness) -> None:
+    harness.write("a.md", NOTE_HEADER + "- [ ] Sam to do A\n- [ ] Rahul to do B by Friday\n")
+    harness.write("b.md", NOTE_HEADER + "ACTION: Karan to do C\n")
+    first = harness.ingest()
+    before = harness.items()
+
+    again = harness.ingest()
+
+    assert first.json["items_new"] == 3
+    assert again.json["items_new"] == 0
+    assert harness.items() == before
+
+
+def test_moved_or_respaced_line_is_the_same_occurrence_fr11(harness: Harness) -> None:
+    harness.write("a.md", NOTE_HEADER + "- [ ] Sam to do A\n")
+    harness.ingest()
+
+    harness.write("a.md", NOTE_HEADER + "Intro line.\n\n*  [ ]  Sam to do A\n")
+    result = harness.ingest()
+
+    assert result.json["items_new"] == 0
+    (item,) = harness.items()
+    assert item["id"] == 1
+    assert item["sources"][0]["line"] == 6  # the Source follows the line
+
+
+def test_ticking_a_box_later_marks_the_same_item_done_fr10_fr11(harness: Harness) -> None:
+    harness.write("a.md", NOTE_HEADER + "- [ ] Sam to do A\n")
+    harness.ingest()
+
+    harness.write("a.md", NOTE_HEADER + "- [x] Sam to do A\n")
+    result = harness.ingest()
+
+    assert (result.json["items_new"], result.json["items_done"]) == (0, 1)
+    (item,) = harness.items()
+    assert (item["id"], item["status"]) == (1, "done")
+
+
+def test_done_is_never_cleared_by_unticking_fr10(harness: Harness) -> None:
+    harness.write("a.md", NOTE_HEADER + "- [x] Sam to do A\n")
+    harness.ingest()
+
+    harness.write("a.md", NOTE_HEADER + "- [ ] Sam to do A\n")
+    harness.ingest()
+
+    (item,) = harness.items()
+    assert item["status"] == "done"
+    assert item["sources"][0]["checked"] is False
+
+
+def test_malformed_note_stores_no_items_fr3(harness: Harness) -> None:
+    harness.write("untitled.md", "- [ ] Sam to chase the vendor\n- [ ] Priya to send the slides by Friday\n")
+
+    result = harness.ingest()
+
+    assert result.json["items_new"] == 0
+    assert harness.items() == []

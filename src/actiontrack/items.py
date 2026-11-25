@@ -35,13 +35,15 @@ class Occurrence:
     def line_key(self) -> str:
         """Identity of this occurrence within its note, for idempotent re-ingest (FR-11).
 
-        Case, spacing and the checkbox mark are ignored, so ticking a box keeps the same item.
+        Case, spacing, the bullet character and the checkbox mark are ignored, so ticking
+        a box or restyling a bullet keeps the same item.
         """
-        return " ".join(_CHECK_MARK.sub("[ ]", self.raw_line, count=1).split()).casefold()
+        unmarked = _CHECKBOX_PREFIX.sub("- [ ] ", self.raw_line, count=1)
+        return " ".join(unmarked.split()).casefold()
 
 
 _CHECKBOX = re.compile(r"^\s*[-*+]\s+\[(?P<mark>[ xX])\]\s+(?P<text>.*\S)\s*$")
-_CHECK_MARK = re.compile(r"\[[xX]\]")
+_CHECKBOX_PREFIX = re.compile(r"^\s*[-*+]\s+\[[ xX]\]\s+")
 _MENTION = re.compile(r"^@(?P<handle>[\w.-]+)\s*:\s*(?P<text>.*)$")
 _ACTION_LINE = re.compile(r"^\s*ACTION:\s*(?P<text>.*\S)\s*$")
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
