@@ -66,6 +66,20 @@ class Harness:
         """Run `actiontrack ingest <folder> --json` (the temp notes folder by default)."""
         return self.run("ingest", str(folder or self.notes), "--json", db=db)
 
+    def items(self) -> list[dict[str, Any]]:
+        """Run `actiontrack list --json` and return the stored Action Items."""
+        result = self.run("list", "--json")
+        assert result.code == 0, result.err
+        return result.json
+
+    def ingest_note(self, body: str, *, name: str = "note.md", date: str = "2026-09-30") -> list[dict[str, Any]]:
+        """Write one Meeting Note with a valid header around `body`, ingest, and return all items."""
+        self.write(name, f"# Meeting: Test meeting\nDate: {date}\nAttendees: Priya Nair\n\n{body}")
+        result = self.ingest()
+        assert result.code == 0, result.err
+        assert result.json["malformed"] == 0, result.json["malformed_notes"]
+        return self.items()
+
 
 @pytest.fixture
 def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:

@@ -13,7 +13,7 @@ Two header styles are understood:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import PurePath
 
@@ -22,11 +22,12 @@ from actiontrack import dates
 
 @dataclass(frozen=True)
 class Note:
-    """A Meeting Note's header."""
+    """A Meeting Note: its header, plus its full text for Action Item extraction."""
 
     title: str
     meeting_date: date
     attendees: tuple[str, ...]
+    text: str = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,7 @@ def parse(data: bytes, file_name: str) -> Note | Malformed:
         title=fields.get("title") or PurePath(file_name).stem,
         meeting_date=meeting_date,
         attendees=_split_names(fields.get("attendees", "")),
+        text=text,
     )
 
 

@@ -12,9 +12,11 @@ import os
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from pathlib import Path
 
+from actiontrack.items import Occurrence
 from actiontrack.notes import Note
 
 # _MIGRATIONS[n] upgrades a database from user_version n to n + 1.
@@ -30,6 +32,36 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
         )
         """,
     ),
+    (
+        # AUTOINCREMENT: ids are never reused, even after the highest row is gone (FR-11).
+        """
+        CREATE TABLE items (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          task          TEXT NOT NULL,     -- from the latest Source
+          owner_kind    TEXT CHECK (owner_kind IN
+                          ('person', 'team', 'ambiguous', 'unknown', 'unassigned')),  -- set by spec 05
+          written_owner TEXT,              -- owner part as written, e.g. 'Priya N.'
+          candidates    TEXT,              -- JSON array, Ambiguous Owners only
+          due_phrase    TEXT,              -- raw, from the latest Source
+          due_date      TEXT,              -- ISO, set by spec 03
+          done_at       TEXT,              -- NULL = Open; set once, never cleared (FR-10)
+          done_by       TEXT CHECK (done_by IN ('note', 'cli')),
+          merged_into   INTEGER REFERENCES items (id)
+        )
+        """,
+        """
+        CREATE TABLE sources (
+          note_path TEXT    NOT NULL REFERENCES notes (path),
+          line_key  TEXT    NOT NULL,      -- normalised line text
+          item_id   INTEGER NOT NULL REFERENCES items (id),
+          line_no   INTEGER NOT NULL,
+          raw_line  TEXT    NOT NULL,
+          checked   INTEGER NOT NULL,      -- 1 if [x]/[X]
+          PRIMARY KEY (note_path, line_key)  -- re-ingest idempotency (FR-11)
+        )
+        """,
+        "CREATE INDEX sources_item ON sources (item_id)",
+    ),
 )
 
 # NFR-4: meeting content stays private on a shared machine.
@@ -40,8 +72,35 @@ class StoreError(Exception):
     """The database could not be opened or written; the run was rolled back."""
 
 
+@dataclass(frozen=True)
+class RecordResult:
+    """What recording one occurrence changed, for the ingest report."""
+
+    new_item: bool
+    newly_done: bool
+
+
+@dataclass(frozen=True)
+class StoredSource:
+    path: str
+    line_no: int
+    raw_line: str
+    checked: bool
+
+
+@dataclass(frozen=True)
+class StoredItem:
+    id: int
+    written_owner: str | None
+    task: str
+    due_phrase: str | None
+    due_date: str | None
+    done: bool
+    sources: tuple[StoredSource, ...]
+
+
 class Store:
-    """Write access to the database inside one open transaction."""
+    """Access to the database inside one open transaction."""
 
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
@@ -66,6 +125,72 @@ class Store:
                 datetime.now(timezone.utc).isoformat(timespec="seconds"),
             ),
         )
+
+    def record_occurrence(self, note_path: Path, occurrence: Occurrence, meeting_date: date) -> RecordResult:
+        """Store one occurrence as a Source, creating its item unless this line was seen before (FR-11).
+
+        A checked occurrence marks its item Done as of the Meeting Date; Done is never cleared (FR-10).
+        """
+        path = str(note_path)
+        row = self._conn.execute(
+            "SELECT item_id FROM sources WHERE note_path = ? AND line_key = ?",
+            (path, occurrence.line_key),
+        ).fetchone()
+        item_fields = (occurrence.task, occurrence.owner_part, occurrence.due_phrase)
+        if row is None:
+            item_id = self._conn.execute(
+                "INSERT INTO items (task, written_owner, due_phrase) VALUES (?, ?, ?)", item_fields
+            ).lastrowid
+            assert item_id is not None
+        else:
+            item_id = row[0]
+            self._conn.execute(
+                "UPDATE items SET task = ?, written_owner = ?, due_phrase = ? WHERE id = ?",
+                (*item_fields, item_id),
+            )
+        self._conn.execute(
+            """
+            INSERT INTO sources (note_path, line_key, item_id, line_no, raw_line, checked)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT (note_path, line_key) DO UPDATE SET
+              line_no  = excluded.line_no,
+              raw_line = excluded.raw_line,
+              checked  = excluded.checked
+            """,
+            (path, occurrence.line_key, item_id, occurrence.line_no, occurrence.raw_line, occurrence.checked),
+        )
+        newly_done = occurrence.checked and self._mark_done(item_id, meeting_date, by="note")
+        return RecordResult(new_item=row is None, newly_done=newly_done)
+
+    def list_items(self) -> list[StoredItem]:
+        """Every live (not merged) item in id order, each with its Sources."""
+        sources: dict[int, list[StoredSource]] = {}
+        for item_id, path, line_no, raw_line, checked in self._conn.execute(
+            """
+            SELECT s.item_id, s.note_path, s.line_no, s.raw_line, s.checked
+            FROM sources s JOIN notes n ON n.path = s.note_path
+            ORDER BY n.meeting_date, s.note_path, s.line_no
+            """
+        ):
+            sources.setdefault(item_id, []).append(StoredSource(path, line_no, raw_line, bool(checked)))
+        return [
+            StoredItem(item_id, owner, task, due_phrase, due_date, done_at is not None,
+                       tuple(sources.get(item_id, ())))
+            for item_id, owner, task, due_phrase, due_date, done_at in self._conn.execute(
+                """
+                SELECT id, written_owner, task, due_phrase, due_date, done_at
+                FROM items WHERE merged_into IS NULL ORDER BY id
+                """
+            )
+        ]  # fmt: skip
+
+    def _mark_done(self, item_id: int, when: date, *, by: str) -> bool:
+        """Set Done once; returns whether this call changed it."""
+        cursor = self._conn.execute(
+            "UPDATE items SET done_at = ?, done_by = ? WHERE id = ? AND done_at IS NULL",
+            (when.isoformat(), by, item_id),
+        )
+        return cursor.rowcount == 1
 
 
 @contextmanager

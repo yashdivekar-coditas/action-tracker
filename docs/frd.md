@@ -77,7 +77,8 @@ Never ingest text inside a blockquote (`> - [ ] Karan to refund affected custome
 
 ### FR-6 Splitting owner, task and Due Phrase
 - **Owner part**: the text before the first ` to ` when it is made only of name tokens (capitalised words, initials like `N.`, `&`, `,`, `and`); or the `@name` before `:`; or the table's Owner column. Otherwise the item has no written owner and the whole text is the task.
-- **Due Phrase**: only a trailing `by …` (including `— by Friday`), a `due …` / `results due …` clause, or the table's Due column. A date anywhere else stays part of the task: `Sam to schedule cutover for Saturday 10 Oct` and `Karan to freeze invoice edits from 9 Oct` have no Due Date.
+- **Due Phrase**: only a trailing `by …` (including `— by Friday`; with several, the last `by` wins), a `, due …` / `results due …` clause, a bare trailing `tomorrow`, `today`, `EOD` or `EOD tomorrow` (`ACTION: Karan to circulate the offsite summary tomorrow`), or the table's Due column. A date anywhere else stays part of the task: `Sam to schedule cutover for Saturday 10 Oct` and `Karan to freeze invoice edits from 9 Oct` have no Due Date.
+- The Due Phrase is stored without its leading `by` / `due` or trailing punctuation: `by Friday.` → `Friday`, `results due 15 October` → `15 October`. Table Due cells follow the same rule, and `—`, `-` or `n/a` cells count as empty.
 - **Task**: what remains, trimmed of separators (`—`, `,`).
 
 ### FR-7 Owner resolution
@@ -119,7 +120,7 @@ Any other phrase → no Due Date, but the Due Phrase is stored and reported as u
 
 ### FR-11 Re-ingest and stable ids
 - Ids are small integers assigned once and never reused or renumbered.
-- Ingesting the same or an overlapping folder again creates no new items for occurrences already seen (an occurrence is identified by its note's path plus its normalised line), changes no ids, and keeps Done status.
+- Ingesting the same or an overlapping folder again creates no new items for occurrences already seen (an occurrence is identified by its note's path plus its normalised line: case, spacing, indent, bullet character and checkbox mark are ignored, so ticking a box or moving the line keeps the same item), changes no ids, and keeps Done status.
 - If re-ingest re-resolves an occurrence (e.g. a config was added and an Unknown Owner now matches the roster), the existing item is updated in place.
 - If two existing items become Duplicates, they merge into the lower id; using the higher id still works and prints `#<old> was merged into #<new>`.
 

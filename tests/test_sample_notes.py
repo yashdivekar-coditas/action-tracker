@@ -34,3 +34,39 @@ def test_sample_yaml_and_long_date_headers_fr2(harness: Harness) -> None:
     assert notes["2026-09-09-qa-standup.md"]["meeting_date"] == "2026-09-09"
     assert notes["2026-09-14-onboarding-flow-design.md"]["meeting_date"] == "2026-09-14"
     assert notes["2026-09-23-standup.md"]["attendees"] == []
+
+
+def test_sample_items_shapes_and_decoys_fr4_fr5(harness: Harness) -> None:
+    harness.ingest(SAMPLE_NOTES)
+    items = harness.items()
+
+    def found(file: str) -> list[tuple]:
+        return [
+            (i["written_owner"], i["task"], i["due_phrase"])
+            for i in items
+            if any(s["file"] == file for s in i["sources"])
+        ]
+
+    raw_lines = {s["raw_line"] for i in items for s in i["sources"]}
+    # Decoys: the blockquoted refund, the fenced template, the HTML-commented line.
+    assert not any(line.lstrip().startswith(">") for line in raw_lines)
+    assert not any("remediate finding" in line or "hardware tokens" in line for line in raw_lines)
+    assert ("Karan", "refund affected customers", None) in found("2026-09-21-incident-review.md")
+
+    offsite = found("2026-09-30-q4-offsite.md")
+    assert ("Anita", "Refresh the brand kit", "2026-10-09") in offsite
+    assert ("Karan", "circulate the offsite summary", "tomorrow") in offsite
+    assert ("Karan", "validate targets against the budget", "Oct 5th") in offsite
+    assert ("Lena", "run the customer survey", "15 October") in offsite
+    assert ("Sam", "propose the on-call rotation", "mid-October") in offsite
+
+
+def test_sample_reingest_is_idempotent_fr11(harness: Harness) -> None:
+    first = harness.ingest(SAMPLE_NOTES).json
+    before = harness.items()
+
+    again = harness.ingest(SAMPLE_NOTES).json
+
+    assert first["items_new"] == len(before) > 0
+    assert again["items_new"] == again["items_done"] == 0
+    assert harness.items() == before
