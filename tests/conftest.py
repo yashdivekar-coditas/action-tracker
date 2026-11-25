@@ -39,6 +39,8 @@ class Harness:
     """A temp notes folder and temp database, plus helpers to run the CLI against them."""
 
     def __init__(self, root: Path) -> None:
+        self.root = root
+        self.home = root / "home"
         self.notes = root / "notes"
         self.notes.mkdir()
         self.db = root / "actiontrack.db"
@@ -87,6 +89,8 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
     monkeypatch.delenv("ACTIONTRACK_DB", raising=False)
     monkeypatch.delenv("ACTIONTRACK_TODAY", raising=False)
     monkeypatch.chdir(tmp_path)
+    # A developer's ~/.config/actiontrack/actiontrack.toml must not leak in either.
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     return Harness(tmp_path)
 
 

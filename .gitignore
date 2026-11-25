@@ -11,3 +11,6 @@ build/
 .env
 .DS_Store
 .claude/settings.local.json
+
+# Local config (see actiontrack.example.toml)
+/actiontrack.toml

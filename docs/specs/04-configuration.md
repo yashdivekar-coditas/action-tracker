@@ -1,6 +1,6 @@
 # 04 — Configuration: `actiontrack.toml` and the People Roster
 
-Status: ready-for-agent
+Status: done
 Blocked by: 01
 Requirements: FR-18, FR-7 (roster input), NFR-1 (draft-tool validation), NFR-4
 
