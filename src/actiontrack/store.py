@@ -104,6 +104,15 @@ class StoreError(Exception):
 
 
 @dataclass(frozen=True)
+class DoneResult:
+    """What `mark_done_by_id` did, for the `done` command (FR-14)."""
+
+    item: StoredItem
+    already_done: bool
+    redirected_from: int | None  # the id asked for, when it had been merged into `item` (FR-11)
+
+
+@dataclass(frozen=True)
 class RecordResult:
     """What recording one occurrence changed, for the ingest report."""
 
@@ -239,9 +248,22 @@ class Store:
         ).fetchone()
         return row[0] if row else None
 
-    def live_id(self, item_id: int) -> int:
-        """`item_id`, or the item it was merged into (FR-11); merges repoint chains, so one hop is enough."""
-        return self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()[0]
+    def live_id(self, item_id: int) -> int | None:
+        """`item_id`, or the item it was merged into (FR-11), or None if there is no such id.
+
+        Merges repoint chains, so one hop is enough.
+        """
+        row = self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()
+        return row[0] if row else None
+
+    def mark_done_by_id(self, item_id: int, when: date) -> DoneResult | None:
+        """Mark the live item behind `item_id` Done, set once, by the CLI (FR-14); None if the id is unknown."""
+        live = self.live_id(item_id)
+        if live is None:
+            return None
+        already_done = not self._mark_done(live, when, by="cli")
+        item = next(i for i in self.list_items() if i.id == live)
+        return DoneResult(item, already_done, item_id if live != item_id else None)
 
     def list_items(self) -> list[StoredItem]:
         """Every live (not merged) item in id order, each with its Sources."""
