@@ -68,15 +68,34 @@ class Harness:
         """Run `actiontrack ingest <folder> --json` (the temp notes folder by default)."""
         return self.run("ingest", str(folder or self.notes), "--json", db=db)
 
+    def write_roster(self, *people: tuple[str, list[str]]) -> Path:
+        """Write ./actiontrack.toml (found automatically) with a People Roster of (name, aliases)."""
+        # JSON strings and arrays are valid TOML values, so quoting is always right.
+        entries = "".join(
+            f"\n[[people]]\nname = {json.dumps(name)}\n"
+            f"email = {json.dumps(name.lower().replace(' ', '.') + '@example.com')}\n"
+            f"aliases = {json.dumps(aliases)}\n"
+            for name, aliases in people
+        )
+        path = self.root / "actiontrack.toml"
+        path.write_text(f'[gmail]\ncommand = ["fake-gmail"]\ndraft_tool = "create_draft"\n{entries}', encoding="utf-8")
+        return path
+
     def items(self) -> list[dict[str, Any]]:
         """Run `actiontrack list --json` and return the stored Action Items."""
         result = self.run("list", "--json")
         assert result.code == 0, result.err
         return result.json
 
-    def ingest_note(self, body: str, *, name: str = "note.md", date: str = "2026-09-30") -> list[dict[str, Any]]:
-        """Write one Meeting Note with a valid header around `body`, ingest, and return all items."""
-        self.write(name, f"# Meeting: Test meeting\nDate: {date}\nAttendees: Priya Nair\n\n{body}")
+    def ingest_note(
+        self, body: str, *, name: str = "note.md", date: str = "2026-09-30", attendees: str | None = "Priya Nair"
+    ) -> list[dict[str, Any]]:
+        """Write one Meeting Note with a valid header around `body`, ingest, and return all items.
+
+        `attendees=None` leaves the Attendees line out.
+        """
+        attendee_line = f"Attendees: {attendees}\n" if attendees is not None else ""
+        self.write(name, f"# Meeting: Test meeting\nDate: {date}\n{attendee_line}\n{body}")
         result = self.ingest()
         assert result.code == 0, result.err
         assert result.json["malformed"] == 0, result.json["malformed_notes"]

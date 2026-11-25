@@ -16,6 +16,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from actiontrack import config, ingest, store
 
@@ -131,12 +132,12 @@ def _parse_today(text: str | None) -> date:
 
 
 def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
-    _load_config(options)  # validated early; its roster feeds Owner resolution (spec 05)
+    loaded = _load_config(options)  # optional; its People Roster is the FR-7 step 5 fallback
     folder: Path = args.folder
     if not folder.is_dir():
         raise UsageError(f"folder not found: {folder}")
     try:
-        report = ingest.run(folder, options.db)
+        report = ingest.run(folder, options.db, loaded.people if loaded else ())
     except ingest.FolderError as exc:
         raise UsageError(str(exc)) from exc
     except store.StoreError as exc:
@@ -189,7 +190,10 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
     """One item in `list --json`; keys may be added, never renamed (NFR-6)."""
     return {
         "id": item.id,
+        "owner_kind": item.owner_kind,
+        "persons": list(item.persons),
         "written_owner": item.written_owner,
+        "candidates": list(item.candidates),
         "task": item.task,
         "due_phrase": item.due_phrase,
         "due_date": item.due_date,
@@ -207,13 +211,28 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
     }
 
 
+def _owner_label(item: store.StoredItem) -> str:
+    """Resolved Persons, or a label that makes an unclear owner stand out (FR-13)."""
+    match item.owner_kind:
+        case "person" | "team":
+            return ", ".join(item.persons)
+        case "ambiguous":
+            return f"{item.written_owner} (ambiguous: {', '.join(item.candidates)})"
+        case "unknown":
+            return f"{item.written_owner} (unknown)"
+        case "unassigned":
+            return "unassigned"
+        case _:  # stored before owner resolution; re-ingest fills it in
+            return item.written_owner or NO_VALUE
+
+
 def _print_items_table(stored: list[store.StoredItem]) -> None:
     # shortcut: basic aligned columns, no truncation; spec 07 adds terminal-width rendering.
     header = ("ID", "OWNER", "TASK", "DUE", "STATUS")
     rows = [
         (
             str(item.id),
-            _printable(item.written_owner or NO_VALUE),
+            _printable(_owner_label(item)),
             _printable(item.task),
             _printable(item.due_date or item.due_phrase or NO_VALUE),
             _item_status(item),
@@ -247,6 +266,17 @@ def _warn_ingest_problems(report: ingest.IngestReport) -> None:
             f"Unresolved Due Phrase: {_printable(entry.file)}:{entry.line}: {_printable(entry.due_phrase)}",
             file=sys.stderr,
         )
+    for entry in report.ambiguous_owners:
+        candidates = ", ".join(entry["candidates"])
+        _warn_at("Ambiguous Owner", entry, f"{entry['written_owner']} ({candidates})")
+    for entry in report.unknown_owners:
+        _warn_at("Unknown Owner", entry, entry["written_owner"])
+    for entry in report.unassigned_items:
+        _warn_at("Unassigned", entry, entry["task"])
+
+
+def _warn_at(label: str, entry: dict[str, Any], detail: str) -> None:
+    print(f"{label}: {_printable(entry['file'])}:{entry['line']}: {_printable(detail)}", file=sys.stderr)
 
 
 def _printable(text: str) -> str:

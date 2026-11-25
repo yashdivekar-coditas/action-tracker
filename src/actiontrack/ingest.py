@@ -6,12 +6,13 @@ failures abort the run, and `store.transaction` rolls everything back.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
 
-from actiontrack import dates, items, notes, store
+from actiontrack import config, dates, items, notes, owners, store
 
 NOTE_SUFFIX = ".md"
 
@@ -66,7 +67,7 @@ class IngestReport:
     """The result of one ingest run.
 
     The `to_dict()` keys are a public `--json` contract: add keys, never rename them (NFR-6).
-    Item counts and the owner lists are filled by later specs.
+    `items_merged` is filled by spec 06.
     """
 
     ignored: int = 0
@@ -107,8 +108,11 @@ class IngestReport:
         }
 
 
-def run(folder: Path, db_path: Path) -> IngestReport:
+def run(folder: Path, db_path: Path, roster: Sequence[config.Person] = ()) -> IngestReport:
     """Ingest every `.md` file directly inside `folder` into the database at `db_path`.
+
+    `roster` is the People Roster from the config (empty without one), used for Owners
+    that match no Attendee (FR-7 step 5).
 
     Raises `FolderError` if the folder can't be listed (before the database is touched)
     and `store.StoreError` if the database fails (the run is rolled back).
@@ -129,7 +133,9 @@ def run(folder: Path, db_path: Path) -> IngestReport:
             meeting_date = parsed.note.meeting_date
             for occurrence in parsed.occurrences:
                 due_date = _resolve_due(occurrence, meeting_date, path.name, report)
-                result = db.record_occurrence(note_path, occurrence, meeting_date, due_date)
+                owner = owners.resolve(occurrence.owner_part, parsed.note.attendees, roster)
+                result = db.record_occurrence(note_path, occurrence, meeting_date, due_date, owner=owner)
+                _report_owner(report, path.name, occurrence, owner, result.item_id)
                 report.items_new += result.new_item
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))
@@ -144,6 +150,21 @@ def _resolve_due(occurrence: items.Occurrence, meeting_date: date, file: str, re
     if due_date is None:
         report.unresolved_due_phrases.append(UnresolvedDuePhrase(file, occurrence.line_no, occurrence.due_phrase))
     return due_date
+
+
+def _report_owner(
+    report: IngestReport, file: str, occurrence: items.Occurrence, owner: owners.Resolution, item_id: int
+) -> None:
+    """List an unclear owner so it can be fixed in the note or roster (FR-12)."""
+    where = {"file": file, "line": occurrence.line_no, "item_id": item_id}
+    if owner.kind is owners.OwnerKind.AMBIGUOUS:
+        report.ambiguous_owners.append(
+            {**where, "written_owner": occurrence.owner_part, "candidates": list(owner.candidates)}
+        )
+    elif owner.kind is owners.OwnerKind.UNKNOWN:
+        report.unknown_owners.append({**where, "written_owner": occurrence.owner_part})
+    elif owner.kind is owners.OwnerKind.UNASSIGNED:
+        report.unassigned_items.append({**where, "task": occurrence.task})
 
 
 def _scan(folder: Path, skip: Path) -> list[Path]:

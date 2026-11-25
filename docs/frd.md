@@ -91,6 +91,9 @@ Resolve each name in the owner part, in order:
 5. No Attendee matches → match the People Roster (names and aliases) when a config is present (FR-17).
 6. Exactly one match → that Person. More than one → **Ambiguous Owner**, keeping the written name and the candidates. None → **Unknown Owner**, keeping the written name.
 
+- In a shared owner part, each name is resolved on its own. If any is Ambiguous the item is Ambiguous, else if any is Unknown it is Unknown (keeping the full written owner part); placeholder words next to a name or `Team` are ignored (`Anita & TBD` → Anita Desai, `Team & TBD` → Team Item). A Person listed twice is still one match. Ambiguous candidates are sorted by name.
+- A surname initial matches with or without its dot (`Priya N.`, `Priya N`). Roster aliases match ignoring case and spacing.
+
 Ambiguous, Unknown and Unassigned items are stored, listed and reported but never included in a Follow-up Draft.
 
 ### FR-8 Due Date resolution
@@ -138,7 +141,7 @@ After every run, print:
 - each Ambiguous Owner (written name, candidates, note), Unknown Owner, and Unassigned item;
 - each unresolved Due Phrase.
 
-Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usage errors (missing folder, bad arguments). Exit `1` if the database fails; the run is rolled back. With `--json`, print the same report as one JSON object with keys `notes_read`, `malformed`, `ignored`, `items_new`, `items_merged`, `items_done`, `notes` (each Meeting Note read: `file`, `title`, `meeting_date`, `attendees`; JSON only), `malformed_notes` (`file`, `reason`), `ambiguous_owners`, `unknown_owners`, `unassigned_items` and `unresolved_due_phrases`. Keys may be added, never renamed (NFR-6). Problems such as Malformed Notes are also written to stderr.
+Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usage errors (missing folder, bad arguments). Exit `1` if the database fails; the run is rolled back. With `--json`, print the same report as one JSON object with keys `notes_read`, `malformed`, `ignored`, `items_new`, `items_merged`, `items_done`, `notes` (each Meeting Note read: `file`, `title`, `meeting_date`, `attendees`; JSON only), `malformed_notes` (`file`, `reason`), `ambiguous_owners` (`file`, `line`, `item_id`, `written_owner`, `candidates` sorted by name), `unknown_owners` (`file`, `line`, `item_id`, `written_owner`), `unassigned_items` (`file`, `line`, `item_id`, `task`) and `unresolved_due_phrases`. Keys may be added, never renamed (NFR-6). Problems such as Malformed Notes are also written to stderr.
 
 ---
 
@@ -153,7 +156,8 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
   - `--status open|done|overdue`: `open` = not Done (includes Overdue); `overdue` = Open with a Due Date before today; `done` = Done.
   - `--due-before <YYYY-MM-DD>`: Due Date strictly before that date; undated items excluded.
   - `--all`: every status.
-- `--json`: an array of item objects with all fields above plus every Source.
+- Owner column: the resolved Persons (every Attendee for a Team Item), or `Priya (ambiguous: Priya Nair, Priya Shah)`, `Karan (unknown)` or `unassigned`.
+- `--json`: an array of item objects with all fields above plus every Source. Owner fields: `owner_kind` (`person`, `team`, `ambiguous`, `unknown`, `unassigned`), `persons` (full names), `written_owner` (as written) and `candidates` (Ambiguous only).
 - Overdue is computed at run time from today (or `--today`), never stored.
 
 ## 3. Done
