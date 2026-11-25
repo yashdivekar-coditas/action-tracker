@@ -213,3 +213,36 @@ def test_list_owner_column_shows_resolution_fr13(harness: Harness) -> None:
     assert "Karan (unknown)" in out
     assert "unassigned" in out
     assert "Anita Desai, Rahul Mehta" in out
+
+
+# --- review fixes (FR-7) -----------------------------------------------------------
+
+
+def test_a_person_listed_twice_is_not_ambiguous_fr7_step6(harness: Harness) -> None:
+    item = resolve(harness, "Priya to send the quote", attendees="Priya Nair, Rahul Mehta, Priya Nair")
+
+    assert owner(item) == ("person", ["Priya Nair"], [])
+
+
+def test_roster_name_that_is_also_an_alias_is_one_match_fr7_step5(harness: Harness) -> None:
+    harness.write_roster(("Karan Joshi", ["Karan"]))
+
+    assert owner(resolve(harness, "Karan to send the invoices")) == ("person", ["Karan Joshi"], [])
+
+
+def test_placeholder_next_to_team_keeps_a_team_item_fr7_step2(harness: Harness) -> None:
+    item = resolve(harness, "Team & TBD to decide on the launch date", attendees="Priya Nair, Sam Okafor")
+
+    assert owner(item) == ("team", ["Priya Nair", "Sam Okafor"], [])
+
+
+def test_placeholder_next_to_a_name_is_ignored_fr7_step3(harness: Harness) -> None:
+    assert owner(resolve(harness, "Anita & TBD to agree on the API")) == ("person", ["Anita Desai"], [])
+
+
+def test_surname_initial_without_a_dot_and_spaced_aliases_match_fr7(harness: Harness) -> None:
+    harness.write_roster(("Lena Fischer", ["Big  Boss"]))
+
+    items = harness.ingest_note("- [ ] Priya N to send the quote\n- [ ] Big Boss to run the survey\n", attendees=PRIYAS_AND_RAHULS)
+
+    assert [owner(i) for i in items] == [("person", ["Priya Nair"], []), ("person", ["Lena Fischer"], [])]

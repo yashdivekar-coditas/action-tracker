@@ -33,7 +33,7 @@ class Resolution:
 
 # FR-7 step 1: names joined by `&`, `,` or `and` are separate Owners of one shared item.
 _JOINERS = re.compile(r"\s*(?:&|,|\band\b)\s*", re.IGNORECASE)
-_INITIAL = re.compile(r"^(?P<letter>\w)\.$")
+_INITIAL = re.compile(r"^(?P<letter>\w)\.?$")  # `N.` or `N`
 _TEAM_WORDS = frozenset({"team", "everyone", "all"})  # FR-7 step 2
 _UNASSIGNED_WORDS = frozenset({"tbd", "someone", "somebody", "anyone", "?"})  # FR-7 step 3
 
@@ -50,6 +50,7 @@ def resolve(owner_part: str | None, attendees: Sequence[str], roster: Sequence[P
     candidates: list[str] = []
     unknown = False
     team = False
+    named = False  # a real name, not a Team or placeholder word
     for name in names:
         word = name.strip().casefold()
         if word in _TEAM_WORDS:
@@ -58,6 +59,7 @@ def resolve(owner_part: str | None, attendees: Sequence[str], roster: Sequence[P
             continue
         if word in _UNASSIGNED_WORDS:
             continue
+        named = True
         matches = _matching(name, attendees) or _roster_matching(name, roster)
         if len(matches) == 1:
             persons.append(matches[0])
@@ -73,23 +75,31 @@ def resolve(owner_part: str | None, attendees: Sequence[str], roster: Sequence[P
         return Resolution(OwnerKind.UNKNOWN)
     if not persons:
         return Resolution(OwnerKind.UNASSIGNED)
-    only_team = team and len(names) == 1
-    return Resolution(OwnerKind.TEAM if only_team else OwnerKind.PERSON, persons=_unique(persons))
+    # Placeholder words next to real names or Team are ignored (`Anita & TBD` -> Anita).
+    kind = OwnerKind.TEAM if team and not named else OwnerKind.PERSON
+    return Resolution(kind, persons=_unique(persons))
 
 
 def _matching(name: str, people: Sequence[str]) -> list[str]:
-    """`people` whose full name matches `name` (FR-7 step 4), ignoring case."""
-    return [person for person in people if _names_match(name, person)]
+    """`people` whose full name matches `name` (FR-7 step 4), ignoring case.
+
+    Deduplicated, so a Person listed twice is still one match, not an Ambiguous Owner.
+    """
+    return list(_unique([person for person in people if _names_match(name, person)]))
 
 
 def _roster_matching(name: str, roster: Sequence[Person]) -> list[str]:
     """Roster Persons whose full name matches `name` or who have it as an alias, ignoring case."""
-    written = name.strip().casefold()
-    return [
+    written = _normalised(name)
+    return list(_unique([
         person.name
         for person in roster
-        if _names_match(name, person.name) or any(alias.casefold() == written for alias in person.aliases)
-    ]
+        if _names_match(name, person.name) or any(_normalised(alias) == written for alias in person.aliases)
+    ]))  # fmt: skip
+
+
+def _normalised(name: str) -> str:
+    return " ".join(name.casefold().split())
 
 
 def _names_match(written: str, full_name: str) -> bool:
