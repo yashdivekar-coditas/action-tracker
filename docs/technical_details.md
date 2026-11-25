@@ -79,7 +79,7 @@ Action-Tracker/
 | `ingest.py` | Run the folder: for each file, parse → extract → resolve → upsert, collecting the report. One transaction per run | FR-1, FR-9–12, NFR-2 |
 | `store.py` | Schema, migrations (`PRAGMA user_version`), upserts, merges, queries for list/done/followup, draft history | FR-9–11, FR-13–15 |
 | `followup.py` | Pick a Person's Open items, order them, render subject and plain-text body | FR-15–16 |
-| `gmail.py` | Start the configured stdio MCP server, `initialize`, confirm the draft tool exists, `call_tool(draft_tool, …)` once per draft; map results to a draft id or a failure. The only module importing `mcp` (lazily) | FR-17, NFR-1, NFR-7 |
+| `gmail.py` | Start the configured stdio MCP server, `initialize`, confirm the draft tool exists, `call_tool(draft_tool, …)` once per draft; map each result to a draft id (stored as returned) or a failure; part-way failures turn the remaining drafts into failures, so created drafts are never lost. The only module importing `mcp` (lazily) | FR-17, NFR-1, NFR-7 |
 
 ---
 
@@ -240,7 +240,7 @@ There are exactly two test seams (NFR-5):
 
 Tests are grouped by spec, one file per `docs/specs/NN-*.md`, and each test names the FR/NFR it proves. Rule tables (FR-7, FR-8) are parametrised tests that write a tiny note per row. `test_sample_notes.py` ingests `notes/` with `--today 2026-10-15` and asserts every row of FRD §6.
 
-`fake_gmail_server.py` is a tiny `mcp.server.mcpserver.MCPServer` stdio server. It exposes `create_draft` and a decoy `send_message`, and logs every call to a temp file the test reads (the `fake_gmail` fixture in `conftest.py`, whose finaliser fails any test that logged `send_message`). Env switches make it fail for one recipient, omit `create_draft`, or mimic the production server (list `to`, text-only results, `Error:` text failures).
+`fake_gmail_server.py` is a tiny `mcp.server.mcpserver.MCPServer` stdio server. It exposes `create_draft` and a decoy `send_message`, and logs every call to a temp file the test reads (the `fake_gmail` fixture in `conftest.py`, whose finaliser fails any test that logged `send_message`). Env switches make it fail for one recipient, omit `create_draft`, exit after N drafts (a server that dies mid-batch), make the database read-only (a history write that fails), or mimic the production server (list `to`, text-only results, `Error:` text failures).
 
 Run everything with `pytest`. No network or real credentials are needed.
 
@@ -279,7 +279,7 @@ actiontrack is tested against the stdio server **`@artymclabin/gmail-mcp`** ([so
 - **Launch:** `command = ["npx", "-y", "@artymclabin/gmail-mcp"]`, `draft_tool = "draft_email"`.
 - **Auth (NFR-4):** owned by the server. Create a Google Cloud OAuth client (Desktop), save its JSON as `~/.gmail-mcp/gcp-oauth.keys.json`, then run `npx @artymclabin/gmail-mcp auth --scopes=gmail.compose` once. Tokens go to `~/.gmail-mcp/credentials.json`; actiontrack never sees them.
 - **Arguments:** `draft_email` takes `to`, `subject` and `body` (plain text). **`to` is a list of strings**, not a string, so the client must send `to: ["person@example.com"]`.
-- **Result:** plain text, no `structuredContent`: `Email draft created successfully with ID: <id>`. The draft id is the text after `ID: `.
+- **Result:** plain text, no `structuredContent`: `Email draft created successfully with ID: <id>`. actiontrack stores the result text as returned (`gmail_draft_id` holds the whole sentence) and does not parse the id out of it.
 - **Errors:** a failed call comes back as ordinary text starting `Error: ` with `isError` unset, so a draft counts as created only when the success text carries an id.
 - **Note:** this server also exposes `send_email`, `send_draft` and `reply_all`; the NFR-1 allowlist in `gmail.py` is what keeps actiontrack from calling them.
 

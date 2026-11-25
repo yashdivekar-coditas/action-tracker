@@ -14,10 +14,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from actiontrack.followup import Email
+from actiontrack.followup import FollowupDraft
 
 if TYPE_CHECKING:
-    from mcp_types import CallToolResult
+    from mcp_types import CallToolResult, Tool
 
 TIMEOUT_SECONDS = 60  # bounds every wait on the server, so a hung one cannot hang the CLI
 
@@ -34,24 +34,33 @@ class Outcome:
     error: str | None = None
 
 
-def create_drafts(command: Sequence[str], draft_tool: str, emails: Sequence[Email]) -> list[Outcome]:
-    """One Outcome per email, in order; one failing draft does not stop the others. Raises `GmailError`."""
+def create_drafts(command: Sequence[str], draft_tool: str, drafts: Sequence[FollowupDraft]) -> list[Outcome]:
+    """One Outcome per draft, in order; a failing draft does not stop the others.
+
+    Drafts already created are never lost: if the server dies or the transport fails part-way, the
+    drafts not yet made come back as failures. Raises `GmailError` only if no draft was attempted.
+    """
     from mcp import MCPError  # lazy: see the module docstring
 
+    outcomes: list[Outcome] = []  # filled by the session, so it survives a failure part-way
     try:
-        return asyncio.run(_create_drafts(command, draft_tool, emails))
-    except BaseExceptionGroup as group:  # the SDK nests start-up failures in (several) groups
-        failure = group
+        asyncio.run(_create_drafts(command, draft_tool, drafts, outcomes))
+    except (Exception, BaseExceptionGroup) as exc:  # the SDK nests failures in (several) groups
+        failure: BaseException = exc
         while isinstance(failure, BaseExceptionGroup):
             failure = failure.exceptions[0]
-        if isinstance(failure, (OSError, MCPError, GmailError)):
-            raise GmailError(_why(failure, command)) from failure
-        raise
-    except (OSError, MCPError) as exc:
-        raise GmailError(_why(exc, command)) from exc
+        if not outcomes and not isinstance(failure, (OSError, MCPError, GmailError)):
+            raise
+        reason = _failure_message(failure, command)
+        if not outcomes:
+            raise GmailError(reason) from failure
+        outcomes.extend(Outcome(error=reason) for _ in drafts[len(outcomes) :])
+    return outcomes
 
 
-async def _create_drafts(command: Sequence[str], draft_tool: str, emails: Sequence[Email]) -> list[Outcome]:
+async def _create_drafts(
+    command: Sequence[str], draft_tool: str, drafts: Sequence[FollowupDraft], outcomes: list[Outcome]
+) -> None:
     from mcp import Client, MCPError, StdioServerParameters
 
     # env: the SDK passes only a minimal safe environment otherwise, and the server needs HOME for its OAuth tokens.
@@ -60,28 +69,30 @@ async def _create_drafts(command: Sequence[str], draft_tool: str, emails: Sequen
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
         if draft_tool not in tools:
             raise GmailError(f"the server offers no tool named {draft_tool!r}")
-        # Servers differ on `to`: a plain address, or a list of them (the schema says which).
-        to_is_list = tools[draft_tool].input_schema.get("properties", {}).get("to", {}).get("type") == "array"
-        outcomes = []
-        for email in emails:
-            arguments = {"to": [email.to] if to_is_list else email.to, "subject": email.subject, "body": email.body}
+        to_is_list = _takes_recipients_as_list(tools[draft_tool])
+        for draft in drafts:
+            arguments = {"to": [draft.to] if to_is_list else draft.to, "subject": draft.subject, "body": draft.body}
             try:
                 outcomes.append(_outcome(await client.call_tool(draft_tool, arguments)))
             except MCPError as exc:  # e.g. this one call timed out
                 outcomes.append(Outcome(error=exc.error.message))
-        return outcomes
+
+
+def _takes_recipients_as_list(tool: Tool) -> bool:
+    """Servers differ on `to`: a plain address, or a list of them (the tool's input schema says which)."""
+    return tool.input_schema.get("properties", {}).get("to", {}).get("type") == "array"
 
 
 def _outcome(result: CallToolResult) -> Outcome:
     text = "".join(part.text for part in result.content if part.type == "text")
     # The production server reports some failures as "Error: ..." text without setting is_error.
-    if result.is_error or text.startswith("Error"):
+    if result.is_error or text.startswith("Error:"):
         return Outcome(error=text or "the server reported an error")
     draft_id = (result.structured_content or {}).get("id", text)
     return Outcome(draft_id=str(draft_id)) if draft_id else Outcome(error="the server returned no draft id")
 
 
-def _why(exc: BaseException, command: Sequence[str]) -> str:
+def _failure_message(exc: BaseException, command: Sequence[str]) -> str:
     if isinstance(exc, FileNotFoundError):
         return f"cannot start {command[0]!r}: not found"
     return getattr(getattr(exc, "error", None), "message", None) or str(exc) or type(exc).__name__

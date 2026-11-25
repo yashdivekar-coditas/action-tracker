@@ -9,11 +9,10 @@ from __future__ import annotations
 import re
 import sys
 
-from conftest import FakeGmail, Harness
-from test_09_followup import PRIYA, PRIYA_EMAIL, seeded
+from conftest import PRIYA, PRIYA_DRAFT, FakeGmail, Harness, seeded
 
 KARAN = ("Karan Joshi", [])
-_, _, PRIYA_SUBJECT_AND_BODY = PRIYA_EMAIL.partition("Subject: ")
+_, _, PRIYA_SUBJECT_AND_BODY = PRIYA_DRAFT.partition("Subject: ")
 PRIYA_SUBJECT, _, PRIYA_BODY = PRIYA_SUBJECT_AND_BODY.partition("\n\n")
 
 
@@ -142,3 +141,27 @@ def test_a_failed_draft_is_not_recorded_fr15(harness: Harness, fake_gmail: FakeG
     result = harness.run("followup", "Priya")
 
     assert "warning" not in result.err
+
+
+def test_a_server_that_dies_mid_batch_keeps_the_drafts_already_created_nfr2_fr15(harness: Harness, fake_gmail: FakeGmail) -> None:
+    fake_gmail.switch("EXIT_AFTER", "1")
+    result = seeded(harness, PRIYA, KARAN).run("followup", "--all")
+
+    assert result.code == 1
+    assert "Created draft for Karan Joshi (karan.joshi@example.com): draft-1\n" in result.out
+    assert "draft for Priya Nair failed" in result.err
+    assert result.out.endswith("Drafts: 1 created, 0 skipped, 1 failed. Nothing was sent.\n")
+    assert "Traceback" not in result.err
+    fake_gmail.switch("EXIT_AFTER", "")
+    assert "draft for Karan Joshi was already created" in harness.run("followup", "Karan").err  # it was recorded
+
+
+def test_a_history_write_failure_still_reports_the_created_drafts_nfr2_fr15(harness: Harness, fake_gmail: FakeGmail) -> None:
+    seeded(harness, PRIYA)
+    fake_gmail.switch("CHMOD_DB", str(harness.db))  # the server makes the database read-only once it is called
+    result = harness.run("followup", "Priya")
+
+    assert result.code == 1
+    assert "Created draft for Priya Nair (priya.nair@example.com): draft-1\n" in result.out
+    assert "not recorded" in result.err
+    assert "Traceback" not in result.err

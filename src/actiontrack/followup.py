@@ -1,6 +1,6 @@
-"""Compose a Follow-up Draft's email from a Person's Open items (FR-16).
+"""Compose a Follow-up Draft from a Person's Open items (FR-16).
 
-Pure: no I/O. The caller picks the items (the same query `list` uses), so the email
+Pure: no I/O. The caller picks the items (the same query `list` uses), so the draft
 can never disagree with `list --owner <Person>`.
 """
 
@@ -14,22 +14,22 @@ from actiontrack.store import StoredItem
 
 
 @dataclass(frozen=True)
-class Email:
+class FollowupDraft:
     to: str
     subject: str
     body: str
 
 
-def compose(person: Person, items: Sequence[StoredItem], sender: str) -> Email:
-    """The email for `person` listing `items` (all Open, in `list` order, Overdue first) signed by `sender`."""
+def compose(person: Person, items: Sequence[StoredItem], sender: str) -> FollowupDraft:
+    """The Follow-up Draft for `person` listing `items` (all Open, in `list` order, Overdue first) signed by `sender`."""
     overdue = [item for item in items if item.days_overdue is not None]
-    open_ = [item for item in items if item.days_overdue is None]
+    not_overdue = [item for item in items if item.days_overdue is None]
     lines = [f"Hi {person.name.split()[0]},", "", "Here are your open action items from recent meetings:"]
-    for heading, section in (("OVERDUE", overdue), ("OPEN", open_)):
+    for heading, section in (("OVERDUE", overdue), ("OPEN", not_overdue)):
         if section:
             lines += ["", heading, *(line for item in section for line in _item_lines(item))]
     lines += ["", "Thanks,", sender]
-    return Email(
+    return FollowupDraft(
         to=person.email,
         subject=f"Action items from recent meetings — {len(items)} open, {len(overdue)} overdue",
         body="\n".join(lines) + "\n",
