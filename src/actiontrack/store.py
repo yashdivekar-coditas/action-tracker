@@ -43,7 +43,7 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
           written_owner TEXT,              -- owner part as written, e.g. 'Priya N.'
           candidates    TEXT,              -- JSON array, Ambiguous Owners only
           due_phrase    TEXT,              -- raw, from the latest Source
-          due_date      TEXT,              -- ISO, set by spec 03
+          due_date      TEXT,              -- ISO, resolved from due_phrase (FR-8)
           done_at       TEXT,              -- NULL = Open; set once, never cleared (FR-10)
           done_by       TEXT CHECK (done_by IN ('note', 'cli')),
           merged_into   INTEGER REFERENCES items (id)
@@ -126,8 +126,13 @@ class Store:
             ),
         )
 
-    def record_occurrence(self, note_path: Path, occurrence: Occurrence, meeting_date: date) -> RecordResult:
+    def record_occurrence(
+        self, note_path: Path, occurrence: Occurrence, meeting_date: date, due_date: date | None
+    ) -> RecordResult:
         """Store one occurrence as a Source, creating its item unless this line was seen before (FR-11).
+
+        The Due Phrase and its resolved Due Date are rewritten on every ingest, so a rule fix
+        applies on the next run (FR-8).
 
         A checked occurrence marks its item Done as of the Meeting Date; Done is never cleared (FR-10).
         """
@@ -136,16 +141,22 @@ class Store:
             "SELECT item_id FROM sources WHERE note_path = ? AND line_key = ?",
             (path, occurrence.line_key),
         ).fetchone()
-        item_fields = (occurrence.task, occurrence.owner_part, occurrence.due_phrase)
+        item_fields = (
+            occurrence.task,
+            occurrence.owner_part,
+            occurrence.due_phrase,
+            due_date.isoformat() if due_date else None,
+        )
         if row is None:
             item_id = self._conn.execute(
-                "INSERT INTO items (task, written_owner, due_phrase) VALUES (?, ?, ?)", item_fields
+                "INSERT INTO items (task, written_owner, due_phrase, due_date) VALUES (?, ?, ?, ?)",
+                item_fields,
             ).lastrowid
             assert item_id is not None
         else:
             item_id = row[0]
             self._conn.execute(
-                "UPDATE items SET task = ?, written_owner = ?, due_phrase = ? WHERE id = ?",
+                "UPDATE items SET task = ?, written_owner = ?, due_phrase = ?, due_date = ? WHERE id = ?",
                 (*item_fields, item_id),
             )
         self._conn.execute(

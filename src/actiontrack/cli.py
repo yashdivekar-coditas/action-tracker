@@ -242,6 +242,11 @@ def _warn_ingest_problems(report: ingest.IngestReport) -> None:
     """Report problems go to stderr in both output modes, so stdout stays pipeable (NFR-6)."""
     for entry in report.malformed_notes:
         print(f"Malformed Note: {_printable(entry.file)}: {_printable(entry.reason)}", file=sys.stderr)
+    for entry in report.unresolved_due_phrases:
+        print(
+            f"Unresolved Due Phrase: {_printable(entry.file)}:{entry.line}: {_printable(entry.due_phrase)}",
+            file=sys.stderr,
+        )
 
 
 def _printable(text: str) -> str:
