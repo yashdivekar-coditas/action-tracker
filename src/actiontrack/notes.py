@@ -3,7 +3,7 @@
 Pure: no I/O beyond the bytes it is given (NFR-9).
 
 Two header styles are understood:
-- YAML front-matter, only when the first line is `---`. Just the `key: value` and
+- YAML front-matter, only when the first line is `---` and a closing `---` follows. Just the `key: value` and
   `key: [a, b]` forms are supported, which covers `title`, `date` and `attendees`
   without a YAML library (NFR-7).
 - The house template: the first `# Meeting:` line (else the first `#` heading) is the
@@ -61,9 +61,8 @@ def parse(data: bytes, file_name: str) -> Note | Malformed:
         return Malformed(EMPTY)
 
     lines = text.splitlines()
-    if lines[0].strip() == _FRONT_MATTER_FENCE:
-        fields = _front_matter(lines[1:])
-    else:
+    fields = _front_matter(lines)
+    if fields is None:
         fields = _template_header(lines)
 
     raw_date = fields.get("date", "")
@@ -80,15 +79,21 @@ def parse(data: bytes, file_name: str) -> Note | Malformed:
     )
 
 
-def _front_matter(lines: list[str]) -> dict[str, str]:
-    """`key: value` pairs up to the closing `---` (or the end, if it is never closed)."""
+def _front_matter(lines: list[str]) -> dict[str, str] | None:
+    """`key: value` pairs between an opening `---` first line and its closing `---`.
+
+    `None` when the note has no front-matter, or never closes it: reading on would
+    take body lines as header fields, so the template header is used instead.
+    """
+    if lines[0].strip() != _FRONT_MATTER_FENCE:
+        return None
     fields: dict[str, str] = {}
-    for line in lines:
+    for line in lines[1:]:
         if line.strip() == _FRONT_MATTER_FENCE:
-            break
+            return fields
         if match := _KEY_VALUE.match(line):
             fields.setdefault(match[1].lower(), _unquote(match[2]))
-    return fields
+    return None
 
 
 def _template_header(lines: list[str]) -> dict[str, str]:

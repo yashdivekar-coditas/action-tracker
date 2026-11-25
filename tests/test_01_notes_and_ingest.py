@@ -374,3 +374,11 @@ def test_same_folder_gives_identical_report_nfr3(harness: Harness) -> None:
 
     assert first.out == again.out == fresh.out
     assert [n["file"] for n in first.json["notes"]] == ["a.md", "b.md", "c.md"]
+
+
+def test_unclosed_front_matter_falls_back_to_template_header_fr2_nfr2(harness: Harness) -> None:
+    content = "---\n# Meeting: Foo\nDate: 2026-09-01\n\n## Notes\nTitle: bar\ndate: someday\n"
+
+    note = ingested_note(harness, "n.md", content)
+
+    assert (note["title"], note["meeting_date"]) == ("Foo", "2026-09-01")
