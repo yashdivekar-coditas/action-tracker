@@ -110,6 +110,7 @@ class RecordResult:
     item_id: int
     new_item: bool
     duplicate: bool  # a repeat attached to an existing item as another Source (FR-9)
+    merged: bool  # a correction made two items one; `item_id` is the survivor (FR-11)
     newly_done: bool
 
 
@@ -174,8 +175,8 @@ class Store:
         """Store one occurrence as a Source of an item (FR-9, FR-11).
 
         A line seen before updates its item in place; otherwise an item with the same dedupe key
-        gains the Source as a Duplicate; otherwise a new item is created. Two items that now share
-        a key violate the unique index and raise `StoreError` (merging them is spec 06 ticket 03).
+        gains the Source as a Duplicate; otherwise a new item is created. If re-resolving a known
+        line gives its item the key of another live item, the two merge into the lower id (FR-11).
 
         The Source keeps its own task, written owner, Due Phrase and Due Date, rewritten on every
         ingest so a rule fix applies on the next run (FR-8). The item's fields are then re-derived
@@ -189,9 +190,15 @@ class Store:
             (path, occurrence.line_key),
         ).fetchone()
         key = dedupe_key(owner.kind.value, owner.persons, occurrence.owner_part, occurrence.task)
-        duplicate = False
+        duplicate = merged = False
         if row is not None:
             item_id = row[0]
+            other = self._conn.execute(
+                "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL AND id != ?", (key, item_id)
+            ).fetchone()
+            if other:
+                item_id, merged = min(item_id, other[0]), True
+                self._merge_items(loser=max(row[0], other[0]), survivor=item_id)
             self._conn.execute("UPDATE items SET dedupe_key = ? WHERE id = ?", (key, item_id))
         elif live := self._conn.execute(
             "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL", (key,)
@@ -226,8 +233,9 @@ class Store:
         self._set_owner(item_id, owner)
         newly_done = occurrence.checked and self._mark_done(item_id, meeting_date, by="note")
         return RecordResult(
-            item_id=item_id, new_item=row is None and not duplicate, duplicate=duplicate, newly_done=newly_done
-        )
+            item_id=item_id, new_item=row is None and not duplicate, duplicate=duplicate, merged=merged,
+            newly_done=newly_done,
+        )  # fmt: skip
 
     def list_items(self) -> list[StoredItem]:
         """Every live (not merged) item in id order, each with its Sources."""
@@ -276,6 +284,24 @@ class Store:
             "UPDATE items SET task = ?, written_owner = ?, due_phrase = ?, due_date = ? WHERE id = ?",
             (task, written_owner, due_phrase, due_date, item_id),
         )
+
+    def _merge_items(self, *, loser: int, survivor: int) -> None:
+        """Fold `loser` into `survivor`: same dedupe key, so same Persons; Done wins (FR-11).
+
+        The loser is retired first so the survivor can take the shared key without tripping `items_live_key`.
+        """
+        self._conn.execute("UPDATE items SET merged_into = ? WHERE id = ?", (survivor, loser))
+        self._conn.execute("UPDATE items SET merged_into = ? WHERE merged_into = ?", (survivor, loser))
+        self._conn.execute("UPDATE sources SET item_id = ? WHERE item_id = ?", (survivor, loser))
+        self._conn.execute("DELETE FROM item_owners WHERE item_id = ?", (loser,))
+        self._conn.execute(
+            """
+            UPDATE items SET (done_at, done_by) = (SELECT done_at, done_by FROM items WHERE id = ?)
+            WHERE id = ? AND done_at IS NULL
+            """,
+            (loser, survivor),
+        )
+        self._derive_item_fields(survivor)
 
     def _set_owner(self, item_id: int, owner: Resolution) -> None:
         """Replace the item's owner fields with a fresh resolution (FR-11: updated in place)."""

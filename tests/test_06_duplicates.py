@@ -276,3 +276,74 @@ def test_an_older_source_ingested_later_restores_a_due_date_fr9(harness: Harness
 
     [item] = harness.items()
     assert (item["due_phrase"], item["due_date"]) == ("Friday", "2026-09-04")
+
+
+# --- corrections merge into the lower id; re-ingest is idempotent (FR-11, FR-10, FR-12) ---
+
+INVOICES = "Karan to send the invoices"
+
+
+def _unknown_and_person(harness: Harness, *, unknown_first: bool, done_in: str) -> None:
+    """Two items for one task: Karan is Unknown in one note and an Attendee (a Person) in the other."""
+    unknown = ("a.md" if unknown_first else "b.md", "2026-09-01" if unknown_first else "2026-09-08")
+    person = ("b.md" if unknown_first else "a.md", "2026-09-08" if unknown_first else "2026-09-01")
+    for (name, date), who in ((unknown, "unknown"), (person, "person")):
+        mark = "x" if done_in == who else " "
+        attendees = "Priya Nair" if who == "unknown" else "Karan Rao"
+        note(harness, name, date, f"- [{mark}] {INVOICES}", attendees=attendees)
+
+
+@pytest.mark.parametrize("unknown_first", [True, False])  # whether the item to merge away has the higher id
+@pytest.mark.parametrize("done_in", ["unknown", "person"])
+def test_a_roster_change_merges_items_into_the_lower_id_fr11_fr10(
+    harness: Harness, unknown_first: bool, done_in: str
+) -> None:
+    _unknown_and_person(harness, unknown_first=unknown_first, done_in=done_in)
+    assert (ingest(harness)["items_new"], [i["id"] for i in harness.items()]) == (2, [1, 2])
+    harness.write_roster(("Karan Rao", ["Karan"]))
+
+    report = ingest(harness)
+
+    assert (report["items_new"], report["items_merged"]) == (0, 1)
+    [item] = harness.items()
+    assert (item["id"], item["owner_kind"], item["persons"], item["status"]) == (1, "person", ["Karan Rao"], "done")
+    assert files(item) == ["a.md", "b.md"]
+    assert report["unknown_owners"] == []
+
+
+def test_a_new_item_after_a_merge_gets_a_fresh_id_fr11(harness: Harness) -> None:
+    _unknown_and_person(harness, unknown_first=True, done_in="person")
+    ingest(harness)
+    harness.write_roster(("Karan Rao", ["Karan"]))
+    ingest(harness)
+    note(harness, "c.md", "2026-09-15", "- [ ] Priya N. to book the venue")
+
+    ingest(harness)
+
+    assert [i["id"] for i in harness.items()] == [1, 3]
+
+
+def test_reingest_gives_byte_identical_output_fr11(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-01", BASE, "- [x] Priya N. to book the venue")
+    note(harness, "b.md", "2026-09-08", BASE)
+    ingest(harness)
+    before = harness.run("list", "--json").out
+
+    again = ingest(harness)
+
+    assert (again["items_new"], again["items_merged"], again["items_done"]) == (0, 0, 0)
+    assert harness.run("list", "--json").out == before
+
+
+def test_an_overlapping_folder_adds_only_the_new_occurrences_fr11(harness: Harness) -> None:
+    note(harness, "a.md", "2026-09-01", BASE, "- [ ] Priya N. to book the venue")
+    ingest(harness)
+    before = harness.items()
+    note(harness, "b.md", "2026-09-08", BASE, "- [ ] Rahul to order the badges")
+
+    report = ingest(harness)
+
+    assert (report["items_new"], report["items_merged"]) == (1, 1)
+    after = harness.items()
+    assert [i["id"] for i in after] == [1, 2, 3]
+    assert [(i["id"], i["task"]) for i in after[:2]] == [(i["id"], i["task"]) for i in before]
