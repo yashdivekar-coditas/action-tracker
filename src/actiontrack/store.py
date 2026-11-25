@@ -138,6 +138,10 @@ class StoredItem:
     days_overdue: int | None  # set only when the item is Overdue as of the `today` it was listed with
     sources: tuple[StoredSource, ...]
 
+    @property
+    def latest_source(self) -> StoredSource:
+        return self.sources[-1]  # the store orders Sources by Meeting Date, then path, then line
+
 
 class Store:
     """Access to the database inside one open transaction."""

@@ -306,13 +306,13 @@ def _print_items_table(stored: list[store.StoredItem]) -> None:
             _printable(item.due_date or item.due_phrase or NO_VALUE),
             _status_label(item),
             # Date first, so a truncated title never hides it.
-            _printable(f"{item.sources[-1].meeting_date} {item.sources[-1].title}") if item.sources else NO_VALUE,
+            _printable(f"{item.latest_source.meeting_date} {item.latest_source.title}") if item.sources else NO_VALUE,
         )
         for item in stored
     ]
     widths = [max(len(row[col]) for row in (header, *rows)) for col in range(len(header))]
     available = shutil.get_terminal_size(fallback=(100, 24)).columns - 2 * (len(header) - 1)
-    flexible = (1, 2, 5)  # Owner, task and meeting are the columns that can be long
+    flexible = tuple(header.index(name) for name in ("OWNER", "TASK", "MEETING"))  # the columns that can be long
     while sum(widths) > available:
         widest = max(flexible, key=lambda col: widths[col])
         if widths[widest] <= MIN_FLEXIBLE_WIDTH:
