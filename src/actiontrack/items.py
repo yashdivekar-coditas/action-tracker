@@ -14,6 +14,9 @@ class Shape(StrEnum):
     """How an Action Item was written (FR-4)."""
 
     CHECKBOX = "checkbox"
+    MENTION = "mention"
+    TABLE = "table"
+    ACTION_LINE = "action-line"
 
 
 @dataclass(frozen=True)
@@ -39,18 +42,73 @@ class Occurrence:
 
 _CHECKBOX = re.compile(r"^\s*[-*+]\s+\[(?P<mark>[ xX])\]\s+(?P<text>.*\S)\s*$")
 _CHECK_MARK = re.compile(r"\[[xX]\]")
+_MENTION = re.compile(r"^@(?P<handle>[\w.-]+)\s*:\s*(?P<text>.*)$")
+_ACTION_LINE = re.compile(r"^\s*ACTION:\s*(?P<text>.*\S)\s*$")
+_TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
+_TABLE_DELIMITER = re.compile(r"^\s*\|?(?:\s*:?-+:?\s*\|)+\s*:?-*:?\s*$")
+_TABLE_COLUMNS = ("owner", "action", "due")  # FR-4: found by header name, any order or case
 
 
 def extract(text: str) -> list[Occurrence]:
     """Every Action Item occurrence in `text`, in line order."""
     found: list[Occurrence] = []
-    for line_no, line in enumerate(text.splitlines(), start=1):
-        if match := _CHECKBOX.match(line):
+    lines = text.splitlines()
+    columns: dict[str, int] | None = None  # set while inside an Owner/Action/Due table body
+    for index, line in enumerate(lines):
+        line_no = index + 1
+        if columns is not None:
+            if _TABLE_ROW.match(line):
+                if occurrence := _table_row(line_no, line, columns):
+                    found.append(occurrence)
+                continue
+            columns = None
+        if header := _table_header(line, lines[index + 1] if index + 1 < len(lines) else ""):
+            columns = header
+        elif match := _CHECKBOX.match(line):
+            found.append(_checkbox(line_no, line, match))
+        elif match := _ACTION_LINE.match(line):
             owner, task, due = split(match["text"])
-            found.append(
-                Occurrence(line_no, line, Shape.CHECKBOX, match["mark"] in "xX", owner, task, due)
-            )
+            found.append(Occurrence(line_no, line, Shape.ACTION_LINE, False, owner, task, due))
     return found
+
+
+def _checkbox(line_no: int, line: str, match: re.Match[str]) -> Occurrence:
+    checked = match["mark"] in "xX"
+    if mention := _MENTION.match(match["text"]):
+        task, due = _split_due(mention["text"])
+        return Occurrence(line_no, line, Shape.MENTION, checked, mention["handle"], task, due)
+    owner, task, due = split(match["text"])
+    return Occurrence(line_no, line, Shape.CHECKBOX, checked, owner, task, due)
+
+
+def _cells(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _table_header(line: str, next_line: str) -> dict[str, int] | None:
+    """Column positions when `line` heads an Owner/Action/Due table (followed by a delimiter row)."""
+    if not (_TABLE_ROW.match(line) and _TABLE_DELIMITER.match(next_line)):
+        return None
+    names = [cell.casefold() for cell in _cells(line)]
+    if not all(column in names for column in _TABLE_COLUMNS):
+        return None
+    return {column: names.index(column) for column in _TABLE_COLUMNS}
+
+
+def _table_row(line_no: int, line: str, columns: dict[str, int]) -> Occurrence | None:
+    if _TABLE_DELIMITER.match(line):
+        return None
+    cells = _cells(line)
+
+    def cell(column: str) -> str | None:
+        position = columns[column]
+        value = cells[position] if position < len(cells) else ""
+        return value or None
+
+    task = cell("action")
+    if task is None:
+        return None
+    return Occurrence(line_no, line, Shape.TABLE, False, cell("owner"), task, cell("due"))
 
 
 # --- owner / task / Due Phrase split (FR-6) ----------------------------------------
@@ -64,6 +122,8 @@ _OWNER_TOKENS = re.compile(r"[^\s,&]+|[,&]")
 _SEP = r"(?:\s*[,;—–]\s*|\s+-\s+|\s+)"
 # A trailing `by <phrase>`; the phrase may not contain another ` by `, so the last one wins.
 _BY_CLAUSE = re.compile(_SEP + r"by\s+(?P<phrase>(?:(?!\sby\s).)+?)\s*$", re.IGNORECASE)
+# A bare trailing deadline word, e.g. `circulate the summary tomorrow` (FRD §6).
+_BARE_DEADLINE = re.compile(_SEP + r"(?P<phrase>(?:EOD\s+)?tomorrow|today|EOD)\s*$", re.IGNORECASE)
 _TASK_TRIM = " \t,;—–-"
 
 
@@ -89,6 +149,7 @@ def _is_owner_part(text: str) -> bool:
 
 
 def _split_due(text: str) -> tuple[str, str | None]:
-    if match := _BY_CLAUSE.search(text):
-        return text[: match.start()].strip(_TASK_TRIM), match["phrase"]
+    for clause in (_BY_CLAUSE, _BARE_DEADLINE):
+        if match := clause.search(text):
+            return text[: match.start()].strip(_TASK_TRIM), match["phrase"]
     return text.strip(_TASK_TRIM), None
