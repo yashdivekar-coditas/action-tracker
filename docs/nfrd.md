@@ -32,7 +32,7 @@ These are the qualities every actiontrack feature must have. Functional behaviou
 
 ## NFR-6 CLI interface contract
 - Human output goes to stdout and warnings/report problems to stderr.
-- `--json` on `list` and `ingest` gives a documented, stable JSON shape for scripting. Adding fields is allowed; renaming or removing them is a breaking change.
+- `--json` on `list`, `ingest` and `done` gives a documented, stable JSON shape for scripting. Adding fields is allowed; renaming or removing them is a breaking change.
 - Exit codes: `0` success (including ingest runs with Malformed Notes); `1` operation failed (unknown id, draft creation failed); `2` usage error.
 - `--help` on every command lists its options with one-line descriptions.
 

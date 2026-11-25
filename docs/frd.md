@@ -163,10 +163,11 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 ## 3. Done
 
 ### FR-14 `actiontrack done <id>`
-- Marks the item Done and records when. Prints the item.
-- Already Done → says so, exit `0`.
-- Merged id → acts on the surviving item (FR-11).
-- Unknown id → error, exit `1`.
+- Marks the item Done and records when. Prints the item. `--json` prints it in the same shape as one `list --json` element.
+- Already Done → says "already done", exit `0`.
+- Merged id → acts on the surviving item (FR-11) and says `#14 was merged into #9`.
+- Unknown id (or no database yet) → error, exit `1`. A non-numeric id is a usage error, exit `2`.
+- Done is permanent: re-ingesting a note that still shows the item unchecked never reopens it (FR-10).
 
 ---
 

@@ -92,6 +92,16 @@ def _build_parser() -> argparse.ArgumentParser:
     list_.add_argument("--json", action="store_true", help="print the items as a JSON array")
     list_.set_defaults(handler=_cmd_list)
 
+    done = commands.add_parser(
+        "done",
+        parents=[_global_options_parser()],
+        help="mark an Action Item Done",
+        description="Mark an Action Item Done for good; re-ingesting notes never reopens it.",
+    )
+    done.add_argument("id", type=int, help="id of the Action Item")
+    done.add_argument("--json", action="store_true", help="print the item as JSON")
+    done.set_defaults(handler=_cmd_done)
+
     return parser
 
 
@@ -166,6 +176,29 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
         print(json.dumps([_item_to_dict(item) for item in stored], ensure_ascii=False, indent=2))
     else:
         _print_items_table(stored)
+    return EXIT_OK
+
+
+def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:
+    result: store.DoneResult | None = None
+    try:
+        if options.db.exists():  # an unknown id must not leave a new, empty database behind
+            with store.transaction(options.db) as db:
+                result = db.mark_done_by_id(args.id, options.today)
+    except store.StoreError as exc:
+        _error(str(exc))
+        return EXIT_FAILED
+    if result is None:
+        _error(f"no Action Item with id {args.id}")
+        return EXIT_FAILED
+
+    if args.json:
+        print(json.dumps(_item_to_dict(result.item), ensure_ascii=False, indent=2))
+        return EXIT_OK
+    if result.redirected_from is not None:
+        print(f"#{result.redirected_from} was merged into #{result.item.id}")
+    state = "already done" if result.already_done else "done"
+    print(f"#{result.item.id} {state}: {_printable(_owner_label(result.item))}: {_printable(result.item.task)}")
     return EXIT_OK
 
 
