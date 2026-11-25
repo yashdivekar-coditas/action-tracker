@@ -16,6 +16,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from actiontrack import config, ingest, store
 
@@ -210,13 +211,28 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
     }
 
 
+def _owner_label(item: store.StoredItem) -> str:
+    """Resolved Persons, or a label that makes an unclear owner stand out (FR-13)."""
+    match item.owner_kind:
+        case "person" | "team":
+            return ", ".join(item.persons)
+        case "ambiguous":
+            return f"{item.written_owner} (ambiguous: {', '.join(item.candidates)})"
+        case "unknown":
+            return f"{item.written_owner} (unknown)"
+        case "unassigned":
+            return "unassigned"
+        case _:  # stored before owner resolution; re-ingest fills it in
+            return item.written_owner or NO_VALUE
+
+
 def _print_items_table(stored: list[store.StoredItem]) -> None:
     # shortcut: basic aligned columns, no truncation; spec 07 adds terminal-width rendering.
     header = ("ID", "OWNER", "TASK", "DUE", "STATUS")
     rows = [
         (
             str(item.id),
-            _printable(item.written_owner or NO_VALUE),
+            _printable(_owner_label(item)),
             _printable(item.task),
             _printable(item.due_date or item.due_phrase or NO_VALUE),
             _item_status(item),
@@ -245,6 +261,17 @@ def _warn_ingest_problems(report: ingest.IngestReport) -> None:
     """Report problems go to stderr in both output modes, so stdout stays pipeable (NFR-6)."""
     for entry in report.malformed_notes:
         print(f"Malformed Note: {_printable(entry.file)}: {_printable(entry.reason)}", file=sys.stderr)
+    for entry in report.ambiguous_owners:
+        candidates = ", ".join(entry["candidates"])
+        _warn_at("Ambiguous Owner", entry, f"{entry['written_owner']} ({candidates})")
+    for entry in report.unknown_owners:
+        _warn_at("Unknown Owner", entry, entry["written_owner"])
+    for entry in report.unassigned_items:
+        _warn_at("Unassigned", entry, entry["task"])
+
+
+def _warn_at(label: str, entry: dict[str, Any], detail: str) -> None:
+    print(f"{label}: {_printable(entry['file'])}:{entry['line']}: {_printable(detail)}", file=sys.stderr)
 
 
 def _printable(text: str) -> str:

@@ -155,7 +155,7 @@ def test_attendees_win_over_the_roster_fr7_step5(harness: Harness) -> None:
 def test_several_roster_matches_are_ambiguous_fr7_step6(harness: Harness) -> None:
     harness.write_roster(("Sam Okafor", []), ("Sam Lee", []))
 
-    assert owner(resolve(harness, "Sam to book the room")) == ("ambiguous", [], ["Sam Okafor", "Sam Lee"])
+    assert owner(resolve(harness, "Sam to book the room")) == ("ambiguous", [], ["Sam Lee", "Sam Okafor"])
 
 
 def test_reingest_after_a_roster_fix_updates_the_owner_and_keeps_the_id_fr7_fr11(harness: Harness) -> None:
@@ -168,3 +168,48 @@ def test_reingest_after_a_roster_fix_updates_the_owner_and_keeps_the_id_fr7_fr11
     assert result.json["items_new"] == 0
     assert (before["id"], before["owner_kind"]) == (after["id"], "unknown")
     assert owner(after) == ("person", ["Karan Joshi"], [])
+
+
+# --- report and list output (FR-12, FR-13) -----------------------------------------
+
+REPORT_NOTE = (
+    "- [ ] Priya to circulate the summary\n"
+    "- [ ] Karan to send the invoices\n"
+    "- [ ] TBD to write the changelog\n"
+    "- [ ] Anita to refresh the brand kit\n"
+)
+
+
+def test_ingest_report_lists_unclear_owners_fr12(harness: Harness) -> None:
+    harness.ingest_note(REPORT_NOTE, attendees=PRIYAS_AND_RAHULS, name="sync.md")
+
+    report = harness.ingest().json
+
+    assert report["ambiguous_owners"] == [
+        {"file": "sync.md", "line": 5, "item_id": 1, "written_owner": "Priya", "candidates": ["Priya Nair", "Priya Shah"]}
+    ]
+    assert report["unknown_owners"] == [{"file": "sync.md", "line": 6, "item_id": 2, "written_owner": "Karan"}]
+    assert report["unassigned_items"] == [{"file": "sync.md", "line": 7, "item_id": 3, "task": "write the changelog"}]
+
+
+def test_unclear_owners_are_warned_on_stderr_fr12_nfr6(harness: Harness) -> None:
+    harness.ingest_note(REPORT_NOTE, attendees=PRIYAS_AND_RAHULS, name="sync.md")
+
+    err = harness.run("ingest", str(harness.notes)).err
+
+    assert "Ambiguous Owner: sync.md:5: Priya (Priya Nair, Priya Shah)" in err
+    assert "Unknown Owner: sync.md:6: Karan" in err
+    assert "Unassigned: sync.md:7: write the changelog" in err
+
+
+def test_list_owner_column_shows_resolution_fr13(harness: Harness) -> None:
+    harness.ingest_note(
+        REPORT_NOTE + "- [ ] Anita & Rahul to agree on the API\n", attendees=PRIYAS_AND_RAHULS
+    )
+
+    out = harness.run("list").out
+
+    assert "Priya (ambiguous: Priya Nair, Priya Shah)" in out
+    assert "Karan (unknown)" in out
+    assert "unassigned" in out
+    assert "Anita Desai, Rahul Mehta" in out

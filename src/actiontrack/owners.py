@@ -68,7 +68,7 @@ def resolve(owner_part: str | None, attendees: Sequence[str], roster: Sequence[P
 
     # A shared item takes its least certain name's kind: Ambiguous wins over Unknown.
     if candidates:
-        return Resolution(OwnerKind.AMBIGUOUS, candidates=_unique(candidates))
+        return Resolution(OwnerKind.AMBIGUOUS, candidates=tuple(sorted(set(candidates))))
     if unknown:
         return Resolution(OwnerKind.UNKNOWN)
     if not persons:

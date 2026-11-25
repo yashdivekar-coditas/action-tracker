@@ -57,7 +57,7 @@ class IngestReport:
     """The result of one ingest run.
 
     The `to_dict()` keys are a public `--json` contract: add keys, never rename them (NFR-6).
-    Item counts and the owner/due-phrase lists are filled by later specs.
+    `unresolved_due_phrases` is filled by spec 03.
     """
 
     ignored: int = 0
@@ -121,10 +121,26 @@ def run(folder: Path, db_path: Path, roster: Sequence[config.Person] = ()) -> In
             for occurrence in parsed.occurrences:
                 owner = owners.resolve(occurrence.owner_part, parsed.note.attendees, roster)
                 result = db.record_occurrence(note_path, occurrence, parsed.note.meeting_date, owner=owner)
+                _report_owner(report, path.name, occurrence, owner, result.item_id)
                 report.items_new += result.new_item
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))
     return report
+
+
+def _report_owner(
+    report: IngestReport, file: str, occurrence: items.Occurrence, owner: owners.Resolution, item_id: int
+) -> None:
+    """List an unclear owner so it can be fixed in the note or roster (FR-12)."""
+    where = {"file": file, "line": occurrence.line_no, "item_id": item_id}
+    if owner.kind is owners.OwnerKind.AMBIGUOUS:
+        report.ambiguous_owners.append(
+            {**where, "written_owner": occurrence.owner_part, "candidates": list(owner.candidates)}
+        )
+    elif owner.kind is owners.OwnerKind.UNKNOWN:
+        report.unknown_owners.append({**where, "written_owner": occurrence.owner_part})
+    elif owner.kind is owners.OwnerKind.UNASSIGNED:
+        report.unassigned_items.append({**where, "task": occurrence.task})
 
 
 def _scan(folder: Path, skip: Path) -> list[Path]:

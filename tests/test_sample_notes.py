@@ -70,3 +70,33 @@ def test_sample_reingest_is_idempotent_fr11(harness: Harness) -> None:
     assert first["items_new"] == len(before) > 0
     assert again["items_new"] == again["items_done"] == 0
     assert harness.items() == before
+
+
+def test_sample_owner_resolution_fr7(harness: Harness) -> None:
+    harness.ingest(SAMPLE_NOTES)
+    items = harness.items()
+
+    def owner_of(file: str, task_start: str) -> tuple[str, list[str], list[str]]:
+        (item,) = [
+            i for i in items
+            if i["task"].startswith(task_start) and any(s["file"] == file for s in i["sources"])
+        ]  # fmt: skip
+        return item["owner_kind"], item["persons"], item["candidates"]
+
+    assert owner_of("2026-09-01-quote-portal-kickoff.md", "send the revised quote") == ("person", ["Priya Nair"], [])
+    assert owner_of("2026-09-03-billing-migration-sync.md", "draft the test plan") == ("person", ["Priya Shah"], [])
+    assert owner_of("2026-09-18-design-review.md", "agree on the component API") == (
+        "person", ["Anita Desai", "Rahul Mehta"], [],
+    )  # fmt: skip
+    assert owner_of("2026-09-18-design-review.md", "audit colour contrast") == ("person", ["Anita Desai"], [])
+    assert owner_of("2026-09-18-design-review.md", "write the design-system")[0] == "unassigned"
+    assert owner_of("2026-09-10-acme-renewal-prep.md", "update the CRM notes")[0] == "unassigned"
+    assert owner_of("2026-10-01-quote-portal-weekly.md", "decide on the launch date") == (
+        "team", ["Priya Nair", "Rahul Mehta", "Anita Desai", "Sam Okafor", "Meera Iyer"], [],
+    )  # fmt: skip
+    assert owner_of("2026-10-08-billing-go-no-go.md", "circulate the go/no-go") == (
+        "ambiguous", [], ["Priya Nair", "Priya Shah"],
+    )  # fmt: skip
+    assert owner_of("2026-09-30-q4-offsite.md", "prepare the architecture") == (
+        "ambiguous", [], ["Rahul Mehta", "Rahul Verma"],
+    )  # fmt: skip
