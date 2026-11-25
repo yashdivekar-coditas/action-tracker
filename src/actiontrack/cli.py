@@ -246,102 +246,134 @@ def _resolve_person(written: str, attendees: list[str], roster: tuple[config.Per
     raise UsageError(f"{label} {written!r} matches nobody; known people: {known or 'none'}")
 
 
+@dataclass(frozen=True)
+class PlannedDraft:
+    """A Follow-up Draft ready to create, with the Person and the Open items it lists (for the history)."""
+
+    person: str
+    item_ids: list[int]
+    draft: followup.FollowupDraft
+
+
+@dataclass(frozen=True)
+class Skip:
+    """A Person who gets no Follow-up Draft, and why."""
+
+    person: str
+    reason: str
+
+
 def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
-    """Compose the emails (FR-15), then print them (`--dry-run`) or save them as Gmail drafts (FR-17)."""
+    """Compose the Follow-up Drafts (FR-15), then print them (`--dry-run`) or save them in Gmail (FR-17)."""
     if args.all == (args.owner is not None):
         raise UsageError("give one <owner> or --all, not both or neither")
     loaded = _load_config(options, required=True)
     assert loaded is not None  # required=True raises instead of returning None
     if not loaded.sender:
         raise UsageError(f"{loaded.path}: sender is required by followup")
-
-    roster = {person.name: person for person in loaded.people}
-    emails: dict[str, followup.Email] = {}  # by Person
-    item_ids: dict[str, list[int]] = {}  # by Person, for the draft history
-    skipped: list[str] = []
     try:
-        # A read must not leave a new, empty database behind, so with none there are simply no items.
-        with store.transaction(options.db) if options.db.exists() else nullcontext() as db:
-            if args.all:
-                # Ambiguous and Unknown items have no Persons, so only resolved Owners get an email.
-                names = sorted({person for item in (db.list_items(options.today, status="open") if db else []) for person in item.persons})
-            else:
-                names = [_resolve_person(args.owner, db.attendees() if db else [], loaded.people, "<owner>")]
-            for name in names:
-                person = roster.get(name)
-                items = db.list_items(options.today, status="open", owner=name) if db else []
-                if person is None:
-                    skipped.append(f"{name}: not in the People Roster")
-                elif not items:
-                    skipped.append(f"{name}: no Open items")
-                else:
-                    emails[name] = followup.compose(person, items, loaded.sender)
-                    item_ids[name] = [item.id for item in items]
+        planned, skips = _plan_drafts(args, options, loaded)
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
-
     if args.dry_run:
-        return _print_dry_run(list(emails.values()), skipped)
-    return _create_drafts(loaded, options.db, emails, item_ids, skipped)
+        return _print_dry_run(planned, skips)
+    return _create_drafts(loaded, options.db, planned, skips)
 
 
-def _print_dry_run(emails: list[followup.Email], skipped: list[str]) -> int:
-    for position, email in enumerate(emails):
+def _plan_drafts(
+    args: argparse.Namespace, options: GlobalOptions, loaded: config.Config
+) -> tuple[list[PlannedDraft], list[Skip]]:
+    """One PlannedDraft per Person with Open items, and a Skip for each Person who cannot get one."""
+    roster = {person.name: person for person in loaded.people}
+    planned: list[PlannedDraft] = []
+    skips: list[Skip] = []
+    # A read must not leave a new, empty database behind, so with none there are simply no items.
+    with store.transaction(options.db) if options.db.exists() else nullcontext() as db:
+        if args.all:
+            # Ambiguous and Unknown items have no Persons, so only resolved Owners get a draft.
+            names = sorted({person for item in (db.list_items(options.today, status="open") if db else []) for person in item.persons})
+        else:
+            names = [_resolve_person(args.owner, db.attendees() if db else [], loaded.people, "<owner>")]
+        for name in names:
+            person = roster.get(name)
+            items = db.list_items(options.today, status="open", owner=name) if db else []
+            if person is None:
+                skips.append(Skip(name, "not in the People Roster"))
+            elif not items:
+                skips.append(Skip(name, "no Open items"))
+            else:
+                planned.append(PlannedDraft(name, [item.id for item in items], followup.compose(person, items, loaded.sender)))
+    return planned, skips
+
+
+def _print_skips(skips: list[Skip]) -> None:
+    for skip in skips:
+        print(f"Skipped {_printable(f'{skip.person}: {skip.reason}')}")
+
+
+def _print_dry_run(planned: list[PlannedDraft], skips: list[Skip]) -> int:
+    for position, plan in enumerate(planned):
         if position:
             print("---")
-        print(_printable(f"To: {email.to}"))
-        print(_printable(f"Subject: {email.subject}"))
+        print(_printable(f"To: {plan.draft.to}"))
+        print(_printable(f"Subject: {plan.draft.subject}"))
         print()
-        print(*(_printable(line) for line in email.body.splitlines()), sep="\n")
-    if emails:
+        print(*(_printable(line) for line in plan.draft.body.splitlines()), sep="\n")
+    if planned:
         print()
-    for reason in skipped:
-        print(f"Skipped {_printable(reason)}")
-    print(f"Dry run: {_plural(len(emails), 'email')} composed, {len(skipped)} skipped. Nothing was created.")
+    _print_skips(skips)
+    print(f"Dry run: {_plural(len(planned), 'email')} composed, {len(skips)} skipped. Nothing was created.")
     return EXIT_OK
 
 
-def _create_drafts(
-    loaded: config.Config, db_path: Path, emails: dict[str, followup.Email], item_ids: dict[str, list[int]], skipped: list[str]
-) -> int:
-    """Save each email as a Gmail draft and summarise: created, skipped, failed (FR-17); exit 1 if any failed."""
-    try:
-        if emails:
-            _warn_recent_drafts(db_path, list(emails))  # before the batch: it makes every draft at once
-        outcomes = gmail.create_drafts(loaded.gmail_command, loaded.gmail_draft_tool, list(emails.values())) if emails else []
-        if emails:
-            with store.transaction(db_path) as db:
-                for (name, email), outcome in zip(emails.items(), outcomes, strict=True):
-                    if outcome.error is None:
-                        db.record_draft(name, email.to, outcome.draft_id, item_ids[name])
-    except gmail.GmailError as exc:
-        _error(f"cannot create Gmail drafts: {_printable(str(exc))}")
-        return EXIT_FAILED
-    except store.StoreError as exc:
-        _error(str(exc))
-        return EXIT_FAILED
+def _create_drafts(loaded: config.Config, db_path: Path, planned: list[PlannedDraft], skips: list[Skip]) -> int:
+    """Save each Follow-up Draft in Gmail and summarise: created, skipped, failed (FR-17); exit 1 if any failed.
 
+    Drafts that were created are printed before anything else can fail, and always recorded (FR-15, NFR-2).
+    """
+    outcomes: list[gmail.Outcome] = []
+    if planned:
+        try:
+            _warn_recent_drafts(db_path, [plan.person for plan in planned])  # before the batch: it makes every draft at once
+            outcomes = gmail.create_drafts(loaded.gmail_command, loaded.gmail_draft_tool, [plan.draft for plan in planned])
+        except gmail.GmailError as exc:
+            _error(f"cannot create Gmail drafts: {_printable(str(exc))}")
+            return EXIT_FAILED
+        except store.StoreError as exc:
+            _error(str(exc))
+            return EXIT_FAILED
+
+    created: list[tuple[PlannedDraft, str | None]] = []
     failed = 0
-    for (name, email), outcome in zip(emails.items(), outcomes, strict=True):
+    for plan, outcome in zip(planned, outcomes, strict=True):
         if outcome.error is None:
-            print(f"Created draft for {_printable(name)} ({_printable(email.to)}): {_printable(outcome.draft_id or '')}")
+            created.append((plan, outcome.draft_id))
+            print(f"Created draft for {_printable(plan.person)} ({_printable(plan.draft.to)}): {_printable(outcome.draft_id or '')}")
         else:
             failed += 1
-            _error(f"draft for {_printable(name)} failed: {_printable(outcome.error)}")
-    for reason in skipped:
-        print(f"Skipped {_printable(reason)}")
-    print(f"Drafts: {len(emails) - failed} created, {len(skipped)} skipped, {failed} failed. Nothing was sent.")
-    return EXIT_FAILED if failed else EXIT_OK
+            _error(f"draft for {_printable(plan.person)} failed: {_printable(outcome.error)}")
+    recorded = True
+    if created:
+        try:
+            with store.transaction(db_path) as db:
+                for plan, draft_id in created:
+                    db.record_draft(plan.person, plan.draft.to, draft_id, plan.item_ids)
+        except store.StoreError as exc:
+            recorded = False
+            _error(f"the drafts above were created in Gmail but not recorded, so a repeat will not warn: {_printable(str(exc))}")
+    _print_skips(skips)
+    print(f"Drafts: {len(created)} created, {len(skips)} skipped, {failed} failed. Nothing was sent.")
+    return EXIT_FAILED if failed or not recorded else EXIT_OK
 
 
 def _warn_recent_drafts(db_path: Path, names: list[str]) -> None:
     """Warn for each Person who already got a draft in the last 24 hours; the new draft is still made (FR-15)."""
     with store.transaction(db_path) as db:
         for name in names:
-            made = db.latest_draft_at(name)
-            if made and datetime.now(timezone.utc) - made < timedelta(hours=24):
-                print(f"warning: a draft for {_printable(name)} was already created at {made.isoformat()}", file=sys.stderr)
+            latest = db.latest_draft_at(name)
+            if latest and datetime.now(timezone.utc) - latest < timedelta(hours=24):
+                print(f"warning: a draft for {_printable(name)} was already created at {latest.isoformat()}", file=sys.stderr)
 
 
 def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:
