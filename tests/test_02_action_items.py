@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from conftest import Harness
 
 
@@ -194,3 +196,44 @@ def test_indented_code_blocks_are_decoys_but_nested_list_items_are_not_fr5(harne
     )
 
     assert tasks(items) == ["finalise the targets", "validate the targets", "check the maths"]
+
+
+# --- owner / task / Due Phrase split (FR-6) ----------------------------------------
+
+SPLIT_CASES = [
+    # owner part: only name tokens before the first " to "
+    ("Book the venue for the offsite", (None, "Book the venue for the offsite", None)),
+    ("Ask the team to vote on the logo by Friday", (None, "Ask the team to vote on the logo", "Friday")),
+    ("Lena (with Priya) to collect user feedback", (None, "Lena (with Priya) to collect user feedback", None)),
+    ("Priya N. to send revised quote to Acme — by Friday", ("Priya N.", "send revised quote to Acme", "Friday")),
+    ("Anita & Rahul to agree on the component API by Wednesday", ("Anita & Rahul", "agree on the component API", "Wednesday")),
+    ("Anita, Rahul and Sam to pair on the API", ("Anita, Rahul and Sam", "pair on the API", None)),
+    ("Team to decide on the launch date", ("Team", "decide on the launch date", None)),
+    ("TBD to write the design-system changelog", ("TBD", "write the design-system changelog", None)),
+    ("? to own the release notes", ("?", "own the release notes", None)),
+    ("Everyone to submit their Q4 goals by 7 Oct", ("Everyone", "submit their Q4 goals", "7 Oct")),
+    # Due Phrase: only a trailing by-clause, a due-clause, or a bare tomorrow/today/EOD
+    ("Lena to run the customer survey, results due 15 October", ("Lena", "run the customer survey", "15 October")),
+    ("Sam to send the draft, due Friday", ("Sam", "send the draft", "Friday")),
+    ("Sam to cut cloud costs by 10% — proposal by 2026-10-09", ("Sam", "cut cloud costs by 10% — proposal", "2026-10-09")),
+    ("Sam to schedule cutover for Saturday 10 Oct", ("Sam", "schedule cutover for Saturday 10 Oct", None)),
+    ("Karan to freeze invoice edits from 9 Oct", ("Karan", "freeze invoice edits from 9 Oct", None)),
+    ("Meera to demo the portal to Acme on 2026-10-14", ("Meera", "demo the portal to Acme on 2026-10-14", None)),
+    ("Sam to write the postmortem by EOD tomorrow", ("Sam", "write the postmortem", "EOD tomorrow")),
+    ("Priya to circulate the summary EOD", ("Priya", "circulate the summary", "EOD")),
+    ("Karan to pay the overdue invoices", ("Karan", "pay the overdue invoices", None)),
+    ("Rahul to write the runbook, by Monday,", ("Rahul", "write the runbook", "Monday")),
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), SPLIT_CASES, ids=[c[0][:40] for c in SPLIT_CASES])
+def test_owner_task_and_due_phrase_split_fr6(harness: Harness, text: str, expected: tuple) -> None:
+    (item,) = harness.ingest_note(f"- [ ] {text}\n")
+
+    assert split(item) == expected
+
+
+def test_same_split_rules_apply_to_action_lines_fr6(harness: Harness) -> None:
+    (item,) = harness.ingest_note("ACTION: Lena to run the customer survey, results due 15 October\n")
+
+    assert split(item) == ("Lena", "run the customer survey", "15 October")

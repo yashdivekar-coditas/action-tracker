@@ -154,6 +154,11 @@ _OWNER_TOKENS = re.compile(r"[^\s,&]+|[,&]")
 
 # Separators a Due Phrase may be attached with: `, by`, `— by`, ` - by`, or plain space.
 _SEP = r"(?:\s*[,;—–]\s*|\s+-\s+|\s+)"
+# A `due <phrase>` clause; needs a separator or `results` first, so `the overdue invoices` stays task.
+_DUE_CLAUSE = re.compile(
+    r"(?:\s*[,;—–]\s*|\s+-\s+|\s+(?=results\s))(?:results\s+)?due\s+(?P<phrase>.+?)\s*$",
+    re.IGNORECASE,
+)
 # A trailing `by <phrase>`; the phrase may not contain another ` by `, so the last one wins.
 _BY_CLAUSE = re.compile(_SEP + r"by\s+(?P<phrase>(?:(?!\sby\s).)+?)\s*$", re.IGNORECASE)
 # A bare trailing deadline word, e.g. `circulate the summary tomorrow` (FRD §6).
@@ -183,7 +188,7 @@ def _is_owner_part(text: str) -> bool:
 
 
 def _split_due(text: str) -> tuple[str, str | None]:
-    for clause in (_BY_CLAUSE, _BARE_DEADLINE):
+    for clause in (_DUE_CLAUSE, _BY_CLAUSE, _BARE_DEADLINE):
         if match := clause.search(text):
-            return text[: match.start()].strip(_TASK_TRIM), match["phrase"]
+            return text[: match.start()].strip(_TASK_TRIM), match["phrase"].rstrip(_TASK_TRIM)
     return text.strip(_TASK_TRIM), None
