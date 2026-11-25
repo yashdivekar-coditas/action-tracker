@@ -345,3 +345,27 @@ def test_pathological_lines_are_split_in_linear_time_nfr2(harness: Harness) -> N
 
     assert time.perf_counter() - started < 2  # quadratic backtracking took ~48 s
     assert len(items) == 3
+
+
+def test_fenced_block_indented_under_a_list_item_is_a_decoy_fr5(harness: Harness) -> None:
+    items = harness.ingest_note(
+        "- Notes on the migration\n"
+        "    ```\n"
+        "    - [ ] Karan to code by Fri\n"
+        "    ```\n"
+        "- [ ] Sam to review the plan\n"
+    )
+
+    assert tasks(items) == ["review the plan"]
+
+
+def test_line_numbers_count_only_real_line_breaks_fr4(harness: Harness) -> None:
+    (item,) = harness.ingest_note("Pasted text\x0cwith odd breaks\n- [ ] Sam to do A\n")
+
+    assert item["sources"][0]["line"] == 6
+
+
+def test_escaped_pipe_stays_inside_a_table_cell_fr4(harness: Harness) -> None:
+    (item,) = harness.ingest_note("| Owner | Action | Due |\n|---|---|---|\n| Sam | Merge A \\| B | 9 Oct |\n")
+
+    assert split(item) == ("Sam", "Merge A | B", "9 Oct")

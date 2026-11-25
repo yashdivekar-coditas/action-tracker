@@ -53,6 +53,9 @@ _TABLE_COLUMNS = ("owner", "action", "due")  # FR-4: found by header name, any o
 _EMPTY_CELLS = frozenset({"", "—", "–", "-", "n/a"})
 _DUE_CELL_PREFIX = re.compile(r"^(?:results\s+)?(?:by|due)\s+", re.IGNORECASE)
 _FENCE_OPEN = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+_FENCE_OPEN_IN_LIST = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")  # fences nest under list items
+_LINE_BREAK = re.compile(r"\r\n|\r|\n")  # not str.splitlines: U+2028, form feed etc. aren't lines
+_CELL_DIVIDER = re.compile(r"(?<!\\)\|")  # `\|` is a literal pipe inside a cell
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 _CODE_INDENT = 4  # columns; a tab counts as 4
 
@@ -60,7 +63,7 @@ _CODE_INDENT = 4  # columns; a tab counts as 4
 def extract(text: str) -> list[Occurrence]:
     """Every Action Item occurrence in `text`, in line order."""
     found: list[Occurrence] = []
-    lines = _without_decoys(text.splitlines())
+    lines = _without_decoys(_LINE_BREAK.split(text))
     columns: dict[str, int] | None = None  # set while inside an Owner/Action/Due table body
     for index, line in enumerate(lines):
         line_no = index + 1
@@ -98,7 +101,7 @@ def _without_decoys(lines: list[str]) -> list[str]:
                 fence = None
             kept.append("")
             continue
-        if match := _FENCE_OPEN.match(line):
+        if match := (_FENCE_OPEN_IN_LIST if in_list else _FENCE_OPEN).match(line):
             fence = match["fence"]
             kept.append("")
         elif not stripped:
@@ -122,7 +125,10 @@ def _checkbox(line_no: int, line: str, match: re.Match[str]) -> Occurrence:
 
 
 def _cells(line: str) -> list[str]:
-    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+    inner = line.strip().removeprefix("|")
+    if inner.endswith("|") and not inner.endswith("\\|"):
+        inner = inner[:-1]
+    return [cell.strip().replace("\\|", "|") for cell in _CELL_DIVIDER.split(inner)]
 
 
 def _table_header(line: str, next_line: str) -> dict[str, int] | None:
