@@ -1,6 +1,6 @@
 # 02 — Action Items: shapes, Decoys and the owner / task / Due Phrase split
 
-Status: ready-for-agent
+Status: done
 Blocked by: 01
 Requirements: FR-4, FR-5, FR-6, FR-10 (single Source), FR-11 (same-line idempotency), FR-13 (basic listing)
 
