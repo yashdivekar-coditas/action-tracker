@@ -4,6 +4,7 @@ A Python CLI that ingests markdown meeting notes, tracks their action items, and
 
 ## Read before working
 - `docs/specs/NN-*.md`: the build queue. Each spec has a `Status:` line and a `Blocked by:` line, so build specs in number order once their blockers are done, and set `Status: done` when a spec's tests pass.
+- `docs/specs/index.md`: dependency graph, parallel waves and merge hotspots. Read it before starting a spec in a parallel session.
 - `docs/frd.md`: what each command does. It is the spec, with stable `FR-<n>` ids and acceptance examples against `notes/`.
 - `docs/nfrd.md`: qualities every change must keep (`NFR-<n>`).
 - `docs/technical_details.md`: how it's built. Read it before creating or moving modules, changing the SQLite schema, or touching the ingest/followup flow.
