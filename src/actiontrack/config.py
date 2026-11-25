@@ -22,7 +22,7 @@ _PERSON_KEYS = ("name", "email", "aliases")
 
 
 class ConfigError(Exception):
-    """The config is missing or invalid; the message names the file."""
+    """The config is missing or invalid; the message names the file, or where it was looked for."""
 
 
 @dataclass(frozen=True)

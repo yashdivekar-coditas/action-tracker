@@ -149,7 +149,6 @@ def test_draft_tool_that_could_send_is_rejected_nfr1(harness: Harness, tool: str
         'command = ["npx"]\ndraft_tool = 3',
         'draft_tool = "create_draft"',  # no command
         'command = []\ndraft_tool = "create_draft"',
-        'command = "npx -y server"\ndraft_tool = "create_draft"',  # must be a list, not a shell string
         'command = ["npx", 1]\ndraft_tool = "create_draft"',
     ],
 )
@@ -157,6 +156,18 @@ def test_invalid_gmail_section_is_rejected_fr18(harness: Harness, gmail: str) ->
     code, err = ingest_with(harness, f'sender = "Meera"\n[gmail]\n{gmail}\n')
     assert code == 2
     assert "gmail" in err
+
+
+def test_gmail_command_must_be_an_argument_list_not_a_shell_string_nfr4(harness: Harness) -> None:
+    code, err = ingest_with(harness, 'sender = "Meera"\n[gmail]\ncommand = "npx -y server"\ndraft_tool = "create_draft"\n')
+    assert code == 2
+    assert "gmail.command" in err
+
+
+def test_config_schema_has_no_credential_fields_nfr4(harness: Harness) -> None:
+    code, err = ingest_with(harness, VALID.replace("[gmail]\n", '[gmail]\npassword = "hunter2"\n'))
+    assert code == 0
+    assert "unknown key 'password'" in err
 
 
 def test_missing_gmail_section_is_rejected_fr18(harness: Harness) -> None:

@@ -57,10 +57,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         options = _resolve_global_options(args)
         handler: Callable[[argparse.Namespace, GlobalOptions], int] = args.handler
         return handler(args, options)
-    except UsageError as exc:
-        _error(str(exc))
-        return EXIT_USAGE
-    except config.ConfigError as exc:
+    except (UsageError, config.ConfigError) as exc:
         _error(_printable(str(exc)))
         return EXIT_USAGE
 
