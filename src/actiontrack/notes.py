@@ -36,6 +36,12 @@ class Malformed:
     reason: str
 
 
+# Malformed reasons (FR-3). `ingest` adds "unreadable: <error>" for anything unexpected.
+NOT_TEXT = "not text"
+EMPTY = "empty"
+NO_MEETING_DATE = "no meeting date"
+UNRESOLVABLE_MEETING_DATE = "unresolvable meeting date"
+
 _FRONT_MATTER_FENCE = "---"
 _KEY_VALUE = re.compile(r"^\s*([A-Za-z_]+)\s*:\s*(.*?)\s*$")
 _TITLE_MEETING = re.compile(r"^#\s+Meeting:\s*(.*)$", re.IGNORECASE)
@@ -45,16 +51,27 @@ _HEADER_FIELDS = frozenset({"date", "attendees"})
 
 def parse(data: bytes, file_name: str) -> Note | Malformed:
     """Parse one note. `file_name` (without `.md`) is the title fallback when the note has none."""
-    text = data.decode("utf-8-sig")  # NFR-8: a UTF-8 byte-order mark is accepted
+    try:
+        text = data.decode("utf-8-sig")  # NFR-8: a UTF-8 byte-order mark is accepted
+    except UnicodeDecodeError:
+        return Malformed(NOT_TEXT)
+    if "\x00" in text:  # valid UTF-8 can still be binary
+        return Malformed(NOT_TEXT)
+    if not text.strip():
+        return Malformed(EMPTY)
+
     lines = text.splitlines()
-    if lines and lines[0].strip() == _FRONT_MATTER_FENCE:
+    if lines[0].strip() == _FRONT_MATTER_FENCE:
         fields = _front_matter(lines[1:])
     else:
         fields = _template_header(lines)
 
     raw_date = fields.get("date", "")
+    if not raw_date:
+        return Malformed(NO_MEETING_DATE)
     meeting_date = dates.parse_meeting_date(raw_date)
-    assert meeting_date is not None
+    if meeting_date is None:
+        return Malformed(f"{UNRESOLVABLE_MEETING_DATE}: {raw_date}")
 
     return Note(
         title=fields.get("title") or PurePath(file_name).stem,

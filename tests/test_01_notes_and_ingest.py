@@ -5,9 +5,12 @@ Each test names the FR/NFR rule it proves.
 
 from __future__ import annotations
 
+import os
+import random
+
 import pytest
 
-from conftest import Harness
+from conftest import Harness, malformed_reasons
 
 TEMPLATE_NOTE = """\
 # Meeting: Quote portal kickoff
@@ -224,3 +227,86 @@ def test_utf8_byte_order_mark_is_accepted_nfr8(harness: Harness) -> None:
     note = ingested_note(harness, "bom.md", b"\xef\xbb\xbf" + TEMPLATE_NOTE.encode("utf-8"))
 
     assert note["title"] == "Quote portal kickoff"
+
+
+# --- Malformed Notes (FR-3, NFR-2) -----------------------------------------------
+
+PNG_BYTES = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10"
+
+
+@pytest.mark.parametrize(
+    ("content", "reason"),
+    [
+        (PNG_BYTES, "not text"),
+        (b"# Meeting: X\x00\nDate: 2026-09-01\n", "not text"),  # NUL bytes: binary, even if valid UTF-8
+        (b"", "empty"),
+        (b" \n\t\n  \n", "empty"),
+        (b"\xef\xbb\xbf\n", "empty"),
+        (b"- [ ] Sam to chase the vendor\n\nno header, no date\n", "no meeting date"),
+        (b"# Meeting: X\nDate:\n", "no meeting date"),
+        (b"# Meeting: X\n\n## Notes\nDate: 2026-09-01\n", "no meeting date"),  # after the first ##
+        (b"---\ntitle: X\n---\n", "no meeting date"),
+        (b"# Meeting: X\nDate: sometime last week\n", "unresolvable meeting date: sometime last week"),
+        (b"# Meeting: X\nDate: 31 February 2026\n", "unresolvable meeting date: 31 February 2026"),
+        (b"---\ndate: 2026-13-01\n---\n", "unresolvable meeting date: 2026-13-01"),
+    ],
+)
+def test_each_malformed_reason_fr3(harness: Harness, content: bytes, reason: str) -> None:
+    harness.write("bad.md", content)
+
+    result = harness.ingest()
+
+    assert result.code == 0
+    assert malformed_reasons(result.json) == {"bad.md": reason}
+    assert result.json["notes_read"] == 0
+    assert f"Malformed Note: bad.md: {reason}" in result.err
+
+
+def test_malformed_note_never_stops_the_run_fr3_nfr2(harness: Harness) -> None:
+    harness.write("a-good.md", TEMPLATE_NOTE)
+    harness.write("b-binary.md", PNG_BYTES)
+    harness.write("c-good.md", TEMPLATE_NOTE)
+
+    result = harness.ingest()
+
+    assert result.code == 0
+    assert [n["file"] for n in result.json["notes"]] == ["a-good.md", "c-good.md"]
+    assert result.json["malformed"] == 1
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can read any file")
+def test_unreadable_note_is_malformed_not_a_crash_nfr2(harness: Harness) -> None:
+    path = harness.write("locked.md", TEMPLATE_NOTE)
+    path.chmod(0)
+    try:
+        result = harness.ingest()
+    finally:
+        path.chmod(0o600)
+
+    assert result.code == 0
+    assert malformed_reasons(result.json)["locked.md"].startswith("unreadable: ")
+
+
+def test_odd_note_content_never_raises_nfr2(harness: Harness) -> None:
+    harness.write("unclosed-front-matter.md", "---\ntitle: X\ndate: 2026-09-01\n")
+    harness.write("huge-line.md", "# Meeting: X\nDate: 2026-09-01\n" + "x" * 1_000_000 + "\n")
+    harness.write("only-fences.md", "---\n---\n")
+    harness.write("crlf.md", "# Meeting: X\r\nDate: 2026-09-01\r\n")
+    harness.write("latin1.md", "# Meeting: Café\nDate: 2026-09-01\n".encode("latin-1"))
+
+    result = harness.ingest()
+
+    assert result.code == 0
+    assert result.json["notes_read"] + result.json["malformed"] == 5
+    assert malformed_reasons(result.json)["latin1.md"] == "not text"
+
+
+def test_random_bytes_as_notes_never_crash_the_run_nfr2(harness: Harness) -> None:
+    rng = random.Random(20261015)  # seeded so a failure is reproducible
+    for i in range(60):
+        harness.write(f"fuzz-{i:02}.md", rng.randbytes(rng.randrange(0, 400)))
+
+    result = harness.ingest()
+
+    assert result.code == 0
+    assert result.json["notes_read"] + result.json["malformed"] == 60
