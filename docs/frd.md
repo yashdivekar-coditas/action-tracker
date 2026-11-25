@@ -227,7 +227,19 @@ email = "anita.desai@example.com"
 aliases = ["anita"]
 ```
 
-The config holds no credentials; Gmail authorisation stays with the MCP server.
+The config holds no credentials; Gmail authorisation stays with the MCP server. A filled-in copy of this example ships as `actiontrack.example.toml`; the real `actiontrack.toml` is git-ignored.
+
+Any command that loads the config validates all of it. `ingest` loads it when found; `list` and `done` never load it. Each problem below exits `2` with the file path on stderr:
+
+- `--config` names a file that doesn't exist (no fallback to the other locations).
+- Invalid TOML or a file that isn't UTF-8 (TOML errors include the line).
+- `[gmail]` is missing, `gmail.command` isn't a non-empty list of strings, or `gmail.draft_tool` is empty.
+- `gmail.draft_tool` contains `send`, `reply` or `forward`, in any case (NFR-1).
+- A `[[people]]` entry without a non-empty `name`, with an `email` lacking `@`, or with `aliases` that aren't a list of non-empty strings. The error names the entry's position (`[[people]] entry 3`).
+- A full name or alias used by two People, ignoring case. A Person may repeat their own name as an alias.
+- `sender` that isn't a non-empty string. `sender` may be left out until `followup` runs.
+
+Unknown keys print a `warning:` line on stderr and are otherwise ignored.
 
 ---
 

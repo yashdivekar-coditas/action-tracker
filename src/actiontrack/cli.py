@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from actiontrack import ingest, store
+from actiontrack import config, ingest, store
 
 PROG = "actiontrack"
 
@@ -59,6 +59,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handler(args, options)
     except UsageError as exc:
         _error(str(exc))
+        return EXIT_USAGE
+    except config.ConfigError as exc:
+        _error(_printable(str(exc)))
         return EXIT_USAGE
 
 
@@ -122,6 +125,7 @@ def _parse_today(text: str | None) -> date:
 
 
 def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
+    _load_config(options)  # validated early; its roster feeds Owner resolution (spec 05)
     folder: Path = args.folder
     if not folder.is_dir():
         raise UsageError(f"folder not found: {folder}")
@@ -139,6 +143,14 @@ def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
         _print_ingest_report(report)
     _warn_ingest_problems(report)
     return EXIT_OK
+
+
+def _load_config(options: GlobalOptions) -> config.Config | None:
+    """Load and validate the config, printing its warnings; a `ConfigError` exits 2 (FR-18)."""
+    loaded = config.load(options.config)
+    for warning in loaded.warnings if loaded else ():
+        print(f"{PROG}: warning: {_printable(warning)}", file=sys.stderr)
+    return loaded
 
 
 # --- output -----------------------------------------------------------------------
