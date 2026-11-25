@@ -426,3 +426,14 @@ def test_database_from_a_newer_actiontrack_is_refused_nfr2(harness: Harness) -> 
     assert result.code == 1
     assert "created by a newer actiontrack (schema 99" in result.err
     assert harness.db.read_bytes() == before
+
+
+def test_database_inside_the_notes_folder_is_not_counted_as_ignored_nfr3(harness: Harness) -> None:
+    harness.write("a.md", TEMPLATE_NOTE)
+    db_in_folder = harness.notes / ".actiontrack.db"
+
+    first = harness.ingest(db=db_in_folder)
+    second = harness.ingest(db=db_in_folder)
+
+    assert first.json["ignored"] == second.json["ignored"] == 0
+    assert first.out == second.out

@@ -93,7 +93,7 @@ def run(folder: Path, db_path: Path) -> IngestReport:
     Raises `FolderError` if the folder can't be listed (before the database is touched)
     and `store.StoreError` if the database fails (the run is rolled back).
     """
-    files = _scan(folder)
+    files = _scan(folder, skip=db_path)
     report = IngestReport()
     with store.transaction(db_path) as db:
         for path in files:
@@ -109,12 +109,26 @@ def run(folder: Path, db_path: Path) -> IngestReport:
     return report
 
 
-def _scan(folder: Path) -> list[Path]:
-    """Files directly inside `folder`, sorted by name so ids and reports are deterministic (NFR-3)."""
+def _scan(folder: Path, skip: Path) -> list[Path]:
+    """Files directly inside `folder`, sorted by name so ids and reports are deterministic (NFR-3).
+
+    `skip` is the database: with `ingest .` it lives in the notes folder and would
+    otherwise be counted as ignored from the second run on.
+    """
     try:
-        return sorted((p for p in folder.iterdir() if p.is_file()), key=lambda p: p.name)
+        return sorted(
+            (p for p in folder.iterdir() if p.is_file() and not _same_file(p, skip)),
+            key=lambda p: p.name,
+        )
     except OSError as exc:
         raise FolderError(f"cannot read folder {folder}: {exc.strerror or exc}") from exc
+
+
+def _same_file(path: Path, other: Path) -> bool:
+    try:
+        return path.samefile(other)
+    except OSError:  # `other` doesn't exist yet
+        return False
 
 
 def _parse(path: Path) -> notes.Note | notes.Malformed:
