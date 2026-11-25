@@ -67,7 +67,7 @@ class IngestReport:
     """The result of one ingest run.
 
     The `to_dict()` keys are a public `--json` contract: add keys, never rename them (NFR-6).
-    `items_merged` is filled by spec 06.
+    `items_merged` counts repeats attached to an existing item (FR-9).
     """
 
     ignored: int = 0
@@ -137,6 +137,7 @@ def run(folder: Path, db_path: Path, roster: Sequence[config.Person] = ()) -> In
                 result = db.record_occurrence(note_path, occurrence, meeting_date, due_date, owner=owner)
                 _report_owner(report, path.name, occurrence, owner, result.item_id)
                 report.items_new += result.new_item
+                report.items_merged += result.duplicate
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))
     return report
