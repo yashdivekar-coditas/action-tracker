@@ -174,6 +174,25 @@ def test_owner_unassigned_selects_only_unassigned_items_fr13(owners: Harness) ->
     assert ids(owners, "--owner", "unassigned") == [5]
 
 
+def test_owner_unassigned_ignores_case_fr13(owners: Harness) -> None:
+    assert ids(owners, "--owner", "Unassigned") == [5]
+    assert ids(owners, "--owner", "UNASSIGNED") == [5]
+
+
+def test_owner_without_a_database_matches_nobody_and_exits_2_fr13(harness: Harness) -> None:
+    result = harness.run("list", "--owner", "Priya")
+    assert result.code == 2 and "none" in result.err
+    assert not harness.db.exists()  # a read must not create the database
+
+
+def test_owner_without_a_database_resolves_against_the_roster_fr13(harness: Harness) -> None:
+    harness.write_roster(("Lena Fischer", ["LF"]), ("Lena Meyer", []))
+    assert harness.run("list", "--owner", "LF").out.strip() == "No matching items."
+    result = harness.run("list", "--owner", "Lena")
+    assert result.code == 2 and "Lena Fischer" in result.err and "Lena Meyer" in result.err
+    assert not harness.db.exists()
+
+
 def test_owner_never_selects_ambiguous_or_unknown_items_fr13(owners: Harness) -> None:
     owners.write(
         "second.md",

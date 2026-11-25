@@ -181,14 +181,16 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     try:
         if options.db.exists():  # a read must not leave a new, empty database behind
             with store.transaction(options.db) as db:
-                owner = _resolve_owner_filter(args.owner, db.attendees(), options) if args.owner is not None else None
+                owner = _resolve_owner_filter(args.owner, db.attendees(), options)
                 stored = db.list_items(
                     options.today,
                     status=None if args.all else args.status or "open",
                     due_before=args.due_before,
                     owner=owner,
-                    unassigned=args.owner == UNASSIGNED,
+                    unassigned=_is_unassigned(args.owner),
                 )
+        else:
+            _resolve_owner_filter(args.owner, [], options)  # with no database only the roster is known
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
@@ -200,9 +202,13 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     return EXIT_OK
 
 
-def _resolve_owner_filter(written: str, attendees: list[str], options: GlobalOptions) -> str | None:
-    """The one known Person `--owner` names (None for `unassigned`); no match or several exit 2 (FR-13)."""
-    if written == UNASSIGNED:
+def _is_unassigned(written: str | None) -> bool:
+    return written is not None and written.casefold() == UNASSIGNED
+
+
+def _resolve_owner_filter(written: str | None, attendees: list[str], options: GlobalOptions) -> str | None:
+    """The one known Person `--owner` names (None for no filter or `unassigned`); no match or several exit 2 (FR-13)."""
+    if written is None or _is_unassigned(written):
         return None
     loaded = _load_config(options)
     roster = loaded.people if loaded else ()
