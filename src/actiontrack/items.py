@@ -47,12 +47,15 @@ _ACTION_LINE = re.compile(r"^\s*ACTION:\s*(?P<text>.*\S)\s*$")
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 _TABLE_DELIMITER = re.compile(r"^\s*\|?(?:\s*:?-+:?\s*\|)+\s*:?-*:?\s*$")
 _TABLE_COLUMNS = ("owner", "action", "due")  # FR-4: found by header name, any order or case
+_FENCE_OPEN = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+_CODE_INDENT = 4  # columns; a tab counts as 4
 
 
 def extract(text: str) -> list[Occurrence]:
     """Every Action Item occurrence in `text`, in line order."""
     found: list[Occurrence] = []
-    lines = text.splitlines()
+    lines = _without_decoys(text.splitlines())
     columns: dict[str, int] | None = None  # set while inside an Owner/Action/Due table body
     for index, line in enumerate(lines):
         line_no = index + 1
@@ -70,6 +73,37 @@ def extract(text: str) -> list[Occurrence]:
             owner, task, due = split(match["text"])
             found.append(Occurrence(line_no, line, Shape.ACTION_LINE, False, owner, task, due))
     return found
+
+
+def _without_decoys(lines: list[str]) -> list[str]:
+    """`lines` with every Decoy line blanked (FR-5), so line numbers and table edges are kept.
+
+    Decoys: lines in a fenced code block (an unclosed fence runs to the end), lines
+    indented as a code block outside a list, and blockquote lines.
+    """
+    kept: list[str] = []
+    fence: str | None = None  # the opening fence while inside a fenced block
+    in_list = False
+    for line in lines:
+        stripped = line.strip()
+        indent = len(line.expandtabs(_CODE_INDENT)) - len(line.expandtabs(_CODE_INDENT).lstrip())
+        if fence is not None:
+            # Closed by a run of the same fence character at least as long as the opener.
+            if stripped.startswith(fence) and set(stripped) == {fence[0]}:
+                fence = None
+            kept.append("")
+            continue
+        if match := _FENCE_OPEN.match(line):
+            fence = match["fence"]
+            kept.append("")
+        elif not stripped:
+            kept.append(line)  # blank lines end tables but keep list context
+        elif stripped.startswith(">") or (indent >= _CODE_INDENT and not in_list):
+            kept.append("")
+        else:
+            in_list = bool(_LIST_ITEM.match(line)) or (in_list and indent > 0)
+            kept.append(line)
+    return kept
 
 
 def _checkbox(line_no: int, line: str, match: re.Match[str]) -> Occurrence:

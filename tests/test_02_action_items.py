@@ -136,3 +136,61 @@ def test_action_line_is_an_open_item_fr4(harness: Harness) -> None:
 
     assert split(item) == ("Karan", "circulate the offsite summary", "tomorrow")
     assert item["status"] == "open"
+
+
+# --- Decoys (FR-5) -----------------------------------------------------------------
+
+
+def tasks(items: list[dict[str, Any]]) -> list[str]:
+    return [i["task"] for i in items]
+
+
+def test_blockquoted_items_are_decoys_fr5(harness: Harness) -> None:
+    items = harness.ingest_note(
+        "> Please make sure someone owns refunds this time.\n"
+        "> - [ ] Karan to refund affected customers by Friday\n"
+        ">> ACTION: Sam to forward the complaint\n"
+        "   > | Owner | Action | Due |\n"
+        "- [ ] Sam to write the postmortem\n"
+    )
+
+    assert tasks(items) == ["write the postmortem"]
+
+
+def test_fenced_code_blocks_are_decoys_fr5(harness: Harness) -> None:
+    items = harness.ingest_note(
+        "Template:\n"
+        "```markdown\n"
+        "- [ ] Owner to remediate finding by <date>\n"
+        "```\n"
+        "~~~\n"
+        "ACTION: Sam to copy this example\n"
+        "```\n"  # a different fence char does not close a ~~~ block
+        "- [ ] Sam to stay hidden\n"
+        "~~~\n"
+        "- [ ] Sam to enable MFA on all admin accounts\n"
+    )
+
+    assert tasks(items) == ["enable MFA on all admin accounts"]
+
+
+def test_unclosed_fence_hides_the_rest_of_the_note_fr5_nfr2(harness: Harness) -> None:
+    items = harness.ingest_note("- [ ] Sam to do A\n```\n- [ ] Sam to do B\n")
+
+    assert tasks(items) == ["do A"]
+
+
+def test_indented_code_blocks_are_decoys_but_nested_list_items_are_not_fr5(harness: Harness) -> None:
+    items = harness.ingest_note(
+        "Example of the format:\n"
+        "\n"
+        "    - [ ] Owner to do the thing by Friday\n"
+        "\tACTION: Sam to copy this example\n"
+        "\n"
+        "- [ ] Meera to finalise the targets\n"
+        "    - [ ] Karan to validate the targets\n"
+        "\n"
+        "        - [ ] Lena to check the maths\n"
+    )
+
+    assert tasks(items) == ["finalise the targets", "validate the targets", "check the maths"]
