@@ -16,7 +16,7 @@ import sys
 from collections.abc import Callable, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -257,6 +257,7 @@ def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
 
     roster = {person.name: person for person in loaded.people}
     emails: dict[str, followup.Email] = {}  # by Person
+    item_ids: dict[str, list[int]] = {}  # by Person, for the draft history
     skipped: list[str] = []
     try:
         # A read must not leave a new, empty database behind, so with none there are simply no items.
@@ -275,13 +276,14 @@ def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
                     skipped.append(f"{name}: no Open items")
                 else:
                     emails[name] = followup.compose(person, items, loaded.sender)
+                    item_ids[name] = [item.id for item in items]
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
 
     if args.dry_run:
         return _print_dry_run(list(emails.values()), skipped)
-    return _create_drafts(loaded, emails, skipped)
+    return _create_drafts(loaded, options.db, emails, item_ids, skipped)
 
 
 def _print_dry_run(emails: list[followup.Email], skipped: list[str]) -> int:
@@ -300,12 +302,24 @@ def _print_dry_run(emails: list[followup.Email], skipped: list[str]) -> int:
     return EXIT_OK
 
 
-def _create_drafts(loaded: config.Config, emails: dict[str, followup.Email], skipped: list[str]) -> int:
+def _create_drafts(
+    loaded: config.Config, db_path: Path, emails: dict[str, followup.Email], item_ids: dict[str, list[int]], skipped: list[str]
+) -> int:
     """Save each email as a Gmail draft and summarise: created, skipped, failed (FR-17); exit 1 if any failed."""
     try:
+        if emails:
+            _warn_recent_drafts(db_path, list(emails))  # before the batch: it makes every draft at once
         outcomes = gmail.create_drafts(loaded.gmail_command, loaded.gmail_draft_tool, list(emails.values())) if emails else []
+        if emails:
+            with store.transaction(db_path) as db:
+                for (name, email), outcome in zip(emails.items(), outcomes, strict=True):
+                    if outcome.error is None:
+                        db.record_draft(name, email.to, outcome.draft_id, item_ids[name])
     except gmail.GmailError as exc:
         _error(f"cannot create Gmail drafts: {_printable(str(exc))}")
+        return EXIT_FAILED
+    except store.StoreError as exc:
+        _error(str(exc))
         return EXIT_FAILED
 
     failed = 0
@@ -319,6 +333,15 @@ def _create_drafts(loaded: config.Config, emails: dict[str, followup.Email], ski
         print(f"Skipped {_printable(reason)}")
     print(f"Drafts: {len(emails) - failed} created, {len(skipped)} skipped, {failed} failed. Nothing was sent.")
     return EXIT_FAILED if failed else EXIT_OK
+
+
+def _warn_recent_drafts(db_path: Path, names: list[str]) -> None:
+    """Warn for each Person who already got a draft in the last 24 hours; the new draft is still made (FR-15)."""
+    with store.transaction(db_path) as db:
+        for name in names:
+            made = db.latest_draft_at(name)
+            if made and datetime.now(timezone.utc) - made < timedelta(hours=24):
+                print(f"warning: a draft for {_printable(name)} was already created at {made.isoformat()}", file=sys.stderr)
 
 
 def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:

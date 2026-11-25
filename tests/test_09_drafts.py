@@ -6,6 +6,7 @@ Seam 1 is the CLI; seam 2 is the fake Gmail MCP server and its call log (`fake_g
 
 from __future__ import annotations
 
+import re
 import sys
 
 from conftest import FakeGmail, Harness
@@ -103,3 +104,41 @@ def test_a_list_recipient_server_gets_to_as_a_list_and_its_text_failures_count_f
     assert [call["args"]["to"] for call in fake_gmail.calls("create_draft")] == [["karan.joshi@example.com"], ["priya.nair@example.com"]]
     assert "draft for Karan Joshi failed: Error: cannot draft for karan.joshi@example.com" in result.err
     assert "Created draft for Priya Nair (priya.nair@example.com): Email draft created successfully with ID: draft-1\n" in result.out
+
+
+def test_a_second_run_within_24_hours_warns_and_still_creates_a_draft_fr15(harness: Harness, fake_gmail: FakeGmail) -> None:
+    seeded(harness, PRIYA)
+    first = harness.run("followup", "Priya")
+    second = harness.run("followup", "Priya")
+
+    assert "warning" not in first.err
+    assert second.code == 0, second.err
+    assert re.search(r"^warning: a draft for Priya Nair was already created at \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$", second.err, re.M)
+    assert len(fake_gmail.calls("create_draft")) == 2
+
+
+def test_the_warning_is_per_person_fr15(harness: Harness, fake_gmail: FakeGmail) -> None:
+    seeded(harness, PRIYA, KARAN)
+    assert harness.run("followup", "Priya").code == 0
+    result = harness.run("followup", "--all")
+
+    assert "draft for Priya Nair was already created" in result.err
+    assert "Karan" not in result.err
+
+
+def test_dry_run_records_nothing_so_a_later_run_does_not_warn_fr15(harness: Harness, fake_gmail: FakeGmail) -> None:
+    seeded(harness, PRIYA)
+    assert harness.run("followup", "Priya", "--dry-run").code == 0
+    result = harness.run("followup", "Priya")
+
+    assert result.err == ""
+
+
+def test_a_failed_draft_is_not_recorded_fr15(harness: Harness, fake_gmail: FakeGmail) -> None:
+    seeded(harness, PRIYA)
+    fake_gmail.switch("FAIL_FOR", "priya.nair@example.com")
+    assert harness.run("followup", "Priya").code == 1
+    fake_gmail.switch("FAIL_FOR", "")
+    result = harness.run("followup", "Priya")
+
+    assert "warning" not in result.err

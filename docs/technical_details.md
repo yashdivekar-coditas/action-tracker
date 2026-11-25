@@ -88,7 +88,7 @@ Action-Tracker/
 Persons are identified by full name (as written in Attendees or the roster). There is no Person table: known Persons are the distinct Attendees across ingested notes plus the roster.
 
 ```sql
--- PRAGMA user_version = 5 (the schema after all migrations in store.py)
+-- PRAGMA user_version = 6 (the schema after all migrations in store.py)
 CREATE TABLE notes (
   path          TEXT PRIMARY KEY,          -- absolute path
   title         TEXT NOT NULL,
@@ -139,8 +139,9 @@ CREATE TABLE drafts (                      -- follow-up history (FR-15)
   email          TEXT NOT NULL,
   gmail_draft_id TEXT,
   item_ids       TEXT NOT NULL,            -- JSON array
-  created_at     TEXT NOT NULL
+  created_at     TEXT NOT NULL             -- ISO UTC, e.g. 2026-10-15T09:30:00+00:00
 );
+CREATE INDEX drafts_person ON drafts (person, created_at);
 ```
 
 **Derived, not stored:** Overdue is `done_at IS NULL AND due_date < :today`, computed at query time (FR-13).
