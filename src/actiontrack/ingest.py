@@ -140,6 +140,9 @@ def run(folder: Path, db_path: Path, roster: Sequence[config.Person] = ()) -> In
                 report.items_merged += result.duplicate + result.merged
                 report.items_done += result.newly_done
             report.ingested_notes.append(IngestedNote(path.name, parsed.note))
+        # A later line can merge an item an earlier entry names, so report the live id (FR-11, FR-12).
+        for entry in (*report.ambiguous_owners, *report.unknown_owners, *report.unassigned_items):
+            entry["item_id"] = db.live_id(entry["item_id"])
     return report
 
 

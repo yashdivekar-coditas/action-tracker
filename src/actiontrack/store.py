@@ -237,6 +237,10 @@ class Store:
             newly_done=newly_done,
         )  # fmt: skip
 
+    def live_id(self, item_id: int) -> int:
+        """`item_id`, or the item it was merged into (FR-11); merges repoint chains, so one hop is enough."""
+        return self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()[0]
+
     def list_items(self) -> list[StoredItem]:
         """Every live (not merged) item in id order, each with its Sources."""
         sources: dict[int, list[StoredSource]] = {}
