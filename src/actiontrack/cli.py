@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ EXIT_USAGE = 2
 DEFAULT_DB = Path(".actiontrack.db")
 ENV_DB = "ACTIONTRACK_DB"
 ENV_TODAY = "ACTIONTRACK_TODAY"
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 
 
 class UsageError(Exception):
@@ -99,17 +101,21 @@ def _global_options_parser() -> argparse.ArgumentParser:
 
 def _resolve_global_options(args: argparse.Namespace) -> GlobalOptions:
     db = args.db or Path(os.environ.get(ENV_DB) or DEFAULT_DB)
-    today_text: str | None = args.today or os.environ.get(ENV_TODAY)
+    # An explicit `--today ''` is an error, but an empty environment variable counts as unset.
+    today_text: str | None = args.today if args.today is not None else os.environ.get(ENV_TODAY) or None
     return GlobalOptions(db=db, config=args.config, today=_parse_today(today_text))
 
 
 def _parse_today(text: str | None) -> date:
-    if not text:
+    if text is None:
         return date.today()
-    try:
-        return date.fromisoformat(text)
-    except ValueError:
-        raise UsageError(f"--today must be a YYYY-MM-DD date, got {text!r}") from None
+    # fromisoformat alone also accepts forms like 20261015 and 2026-W42-1.
+    if _ISO_DAY.fullmatch(text):
+        try:
+            return date.fromisoformat(text)
+        except ValueError:
+            pass
+    raise UsageError(f"--today must be a YYYY-MM-DD date, got {text!r}")
 
 
 # --- commands ---------------------------------------------------------------------
@@ -153,7 +159,12 @@ def _print_ingest_report(report: ingest.IngestReport) -> None:
 def _warn_ingest_problems(report: ingest.IngestReport) -> None:
     """Report problems go to stderr in both output modes, so stdout stays pipeable (NFR-6)."""
     for entry in report.malformed_notes:
-        print(f"Malformed Note: {entry.file}: {entry.reason}", file=sys.stderr)
+        print(f"Malformed Note: {_printable(entry.file)}: {_printable(entry.reason)}", file=sys.stderr)
+
+
+def _printable(text: str) -> str:
+    """Escape control characters so note text can't drive the terminal (NFR-4)."""
+    return "".join(ch if ch.isprintable() else ascii(ch)[1:-1] for ch in text)
 
 
 def _plural(count: int, noun: str) -> str:

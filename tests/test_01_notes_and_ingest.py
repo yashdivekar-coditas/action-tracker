@@ -56,8 +56,9 @@ def test_bad_arguments_are_usage_error_fr12(harness: Harness) -> None:
     assert harness.run("frobnicate", global_options=False).code == 2
 
 
-def test_invalid_today_is_usage_error_fr12(harness: Harness) -> None:
-    result = harness.run("ingest", str(harness.notes), "--today", "15/10/2026", global_options=False)
+@pytest.mark.parametrize("today", ["15/10/2026", "", "20261015", "2026-W42-1"])
+def test_invalid_today_is_usage_error_fr12(harness: Harness, today: str) -> None:
+    result = harness.run("ingest", str(harness.notes), "--today", today, global_options=False)
 
     assert result.code == 2
     assert "--today" in result.err
@@ -437,3 +438,13 @@ def test_database_inside_the_notes_folder_is_not_counted_as_ignored_nfr3(harness
 
     assert first.json["ignored"] == second.json["ignored"] == 0
     assert first.out == second.out
+
+
+def test_note_text_in_warnings_cannot_drive_the_terminal_nfr4(harness: Harness) -> None:
+    harness.write("evil.md", "# Meeting: X\nDate: \x1b[2Jsoon\n")
+
+    result = harness.ingest()
+
+    assert "\x1b" not in result.err
+    assert "Malformed Note: evil.md: unresolvable meeting date: \\x1b[2Jsoon" in result.err
+    assert malformed_reasons(result.json)["evil.md"] == "unresolvable meeting date: \x1b[2Jsoon"
