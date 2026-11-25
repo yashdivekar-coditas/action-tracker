@@ -253,6 +253,8 @@ class Store:
 
         Merges repoint chains, so one hop is enough.
         """
+        if not -(2**63) <= item_id < 2**63:  # beyond SQLite's INTEGER range, so no such id (and sqlite3 would raise)
+            return None
         row = self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()
         return row[0] if row else None
 
