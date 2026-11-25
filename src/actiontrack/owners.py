@@ -80,6 +80,19 @@ def resolve(owner_part: str | None, attendees: Sequence[str], roster: Sequence[P
     return Resolution(kind, persons=_unique(persons))
 
 
+def find_person(name: str, known: Sequence[str], roster: Sequence[Person] = ()) -> list[str]:
+    """Known Persons (full names) that `name` selects, for a filter: the first rule that matches wins.
+
+    Order: exact full name, then roster alias, then a first name (or `Priya N.`); several results mean
+    the name is ambiguous. `known` are Attendee full names; roster Persons count as known too.
+    """
+    people = _unique([*known, *(person.name for person in roster)])
+    written = _normalised(name)
+    exact = [person for person in people if _normalised(person) == written]
+    aliased = [person.name for person in roster if any(_normalised(alias) == written for alias in person.aliases)]
+    return exact or list(_unique(aliased)) or _matching(name, people)
+
+
 def _matching(name: str, people: Sequence[str]) -> list[str]:
     """`people` whose full name matches `name` (FR-7 step 4), ignoring case.
 

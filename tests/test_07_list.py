@@ -117,3 +117,95 @@ def test_sample_notes_overdue_includes_the_q4_sales_targets_fr13(harness: Harnes
     assert harness.ingest(SAMPLE_NOTES).code == 0
     [item] = [i for i in listing(harness, "--status", "overdue") if "Q4 sales targets" in i["task"]]
     assert (item["persons"], item["days_overdue"]) == (["Meera Iyer"], 12)
+
+
+# --- --owner (FR-13) ---------------------------------------------------------------
+
+OWNERS_NOTE = (
+    "- [ ] Anita to draft the spec\n"  # 1
+    "- [ ] Priya N. to review the spec\n"  # 2
+    "- [ ] Anita & Priya N. to demo it\n"  # 3: shared
+    "- [ ] Team to plan the release\n"  # 4: Team Item
+    "- [ ] Someone to book the room\n"  # 5: Unassigned
+    "- [ ] Zed to fix the build\n"  # 6: Unknown
+    "- [x] Anita to publish the notes\n"  # 7: done
+)
+
+
+@pytest.fixture
+def owners(harness: Harness) -> Harness:
+    harness.ingest_note(OWNERS_NOTE, attendees="Anita Desai, Priya Nair, Sam Okafor")
+    return harness
+
+
+def test_owner_by_full_name_matches_shared_and_team_items_fr13(owners: Harness) -> None:
+    assert ids(owners, "--owner", "Anita Desai") == [1, 3, 4]
+    assert ids(owners, "--owner", "priya nair") == [2, 3, 4]
+
+
+def test_owner_by_unique_first_name_fr13(owners: Harness) -> None:
+    assert ids(owners, "--owner", "Anita") == [1, 3, 4]
+
+
+def test_owner_by_roster_alias_fr13(owners: Harness) -> None:
+    owners.write_roster(("Anita Desai", ["AD"]))
+    assert ids(owners, "--owner", "ad") == [1, 3, 4]
+
+
+def test_owner_exact_name_beats_a_first_name_shared_by_others_fr13(harness: Harness) -> None:
+    harness.ingest_note("- [ ] Sam Okafor to a\n", attendees="Sam, Sam Okafor")
+    assert harness.run("list", "--owner", "Sam").code == 0  # exact "Sam", not ambiguous with Sam Okafor
+
+
+def test_owner_alias_beats_first_name_fr13(owners: Harness) -> None:
+    owners.write_roster(("Sam Okafor", ["Anita"]))  # the alias wins over the Attendee first name
+    assert ids(owners, "--owner", "Anita") == [4]  # Sam's only item is the Team Item
+
+
+def test_owner_roster_only_person_is_known_fr13(owners: Harness) -> None:
+    owners.write_roster(("Lena Fischer", ["LF"]))
+    assert ids(owners, "--owner", "Lena") == []
+
+
+def test_owner_unassigned_selects_only_unassigned_items_fr13(owners: Harness) -> None:
+    assert ids(owners, "--owner", "unassigned") == [5]
+
+
+def test_owner_never_selects_ambiguous_or_unknown_items_fr13(owners: Harness) -> None:
+    owners.write(
+        "second.md",
+        "# Meeting: Other\nDate: 2026-09-30\nAttendees: Priya Shah, Priya Nair\n\n- [ ] Priya to chase it\n",
+    )
+    assert owners.ingest().code == 0
+    assert ids(owners, "--all", "--owner", "Sam Okafor") == [4]
+    assert {i["id"] for i in listing(owners, "--all")} >= {6, 8}  # the Unknown and the Ambiguous item exist
+
+
+def test_owner_is_anded_with_status_fr13(owners: Harness) -> None:
+    assert ids(owners, "--owner", "Anita", "--status", "done") == [7]
+    assert ids(owners, "--owner", "Anita", "--all") == [1, 3, 4, 7]
+    assert ids(owners, "--owner", "Anita", "--status", "overdue") == []
+
+
+def test_ambiguous_first_name_exits_2_and_lists_candidates_fr13(harness: Harness) -> None:
+    harness.ingest_note("- [ ] Priya N. to a\n", attendees="Priya Nair, Priya Shah")
+    result = harness.run("list", "--owner", "Priya")
+    assert result.code == 2
+    assert "Priya Nair" in result.err and "Priya Shah" in result.err
+
+
+def test_unknown_owner_name_exits_2_and_lists_known_persons_fr13(owners: Harness) -> None:
+    result = owners.run("list", "--owner", "Nobody")
+    assert result.code == 2
+    assert all(name in result.err for name in ("Anita Desai", "Priya Nair", "Sam Okafor"))
+
+
+def test_sample_notes_owner_filters_fr13(harness: Harness) -> None:
+    from conftest import SAMPLE_NOTES
+
+    assert harness.ingest(SAMPLE_NOTES).code == 0
+    tasks = [i["task"] for i in listing(harness, "--all", "--owner", "Anita Desai")]
+    assert any("agree on the component API" in t for t in tasks)
+    assert any("decide on the launch date" in t for t in tasks)
+    result = harness.run("list", "--owner", "Priya")
+    assert result.code == 2 and "Priya Nair" in result.err and "Priya Shah" in result.err
