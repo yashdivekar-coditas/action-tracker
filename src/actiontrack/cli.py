@@ -18,7 +18,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from actiontrack import config, ingest, store
+from actiontrack import config, ingest, owners, store
 
 PROG = "actiontrack"
 
@@ -31,6 +31,7 @@ DEFAULT_DB = Path(".actiontrack.db")
 ENV_DB = "ACTIONTRACK_DB"
 ENV_TODAY = "ACTIONTRACK_TODAY"
 LIST_STATUSES = ("open", "done", "overdue")
+UNASSIGNED = "unassigned"  # the `list --owner` value that selects Unassigned items
 
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 
@@ -100,6 +101,9 @@ def _build_parser() -> argparse.ArgumentParser:
     list_.add_argument("--all", action="store_true", help="show items of every status (overrides --status)")
     list_.add_argument(
         "--due-before", type=_day_argument, metavar="YYYY-MM-DD", help="only items due strictly before this date"
+    )
+    list_.add_argument(
+        "--owner", help="only items owned by this Person: full name, alias or unique first name; or 'unassigned'"
     )
     list_.add_argument("--json", action="store_true", help="print the items as a JSON array")
     list_.set_defaults(handler=_cmd_list)
@@ -176,10 +180,13 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     try:
         if options.db.exists():  # a read must not leave a new, empty database behind
             with store.transaction(options.db) as db:
+                owner = _resolve_owner_filter(args.owner, db.attendees(), options) if args.owner is not None else None
                 stored = db.list_items(
                     options.today,
                     status=None if args.all else args.status or "open",
                     due_before=args.due_before,
+                    owner=owner,
+                    unassigned=args.owner == UNASSIGNED,
                 )
     except store.StoreError as exc:
         _error(str(exc))
@@ -190,6 +197,21 @@ def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
     else:
         _print_items_table(stored)
     return EXIT_OK
+
+
+def _resolve_owner_filter(written: str, attendees: list[str], options: GlobalOptions) -> str | None:
+    """The one known Person `--owner` names (None for `unassigned`); no match or several exit 2 (FR-13)."""
+    if written == UNASSIGNED:
+        return None
+    loaded = _load_config(options)
+    roster = loaded.people if loaded else ()
+    matches = owners.find_person(written, attendees, roster)
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        raise UsageError(f"--owner {written!r} is ambiguous: {', '.join(matches)}")
+    known = ", ".join(dict.fromkeys([*attendees, *(person.name for person in roster)]))
+    raise UsageError(f"--owner {written!r} matches nobody; known people: {known or 'none'}")
 
 
 def _load_config(options: GlobalOptions) -> config.Config | None:

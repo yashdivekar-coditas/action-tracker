@@ -245,12 +245,20 @@ class Store:
         return self._conn.execute("SELECT COALESCE(merged_into, id) FROM items WHERE id = ?", (item_id,)).fetchone()[0]
 
     def list_items(
-        self, today: date, *, status: str | None = None, due_before: str | None = None
+        self,
+        today: date,
+        *,
+        status: str | None = None,
+        due_before: str | None = None,
+        owner: str | None = None,
+        unassigned: bool = False,
     ) -> list[StoredItem]:
         """Live (not merged) items matching every given filter, each with its Sources, in list order (FR-13).
 
         `status` is `open` (not Done, Overdue included), `overdue` or `done`; None means every status.
         `due_before` is an ISO date; items due on or after it, and undated items, are left out.
+        `owner` is a Person's full name: items listing them as an Owner (shared and Team Items included).
+        `unassigned` selects Unassigned items instead. Ambiguous and Unknown items match neither.
         Overdue means not Done with a Due Date before `today`. Order: Overdue (most late first), then
         dated items by Due Date, then undated ones; ties by id.
         """
@@ -265,6 +273,10 @@ class Store:
                 conditions.append("done_at IS NOT NULL")
         if due_before is not None:
             conditions.append("due_date < :due_before")  # NULL (undated) never compares true
+        if owner is not None:
+            conditions.append("id IN (SELECT item_id FROM item_owners WHERE person = :owner)")
+        if unassigned:
+            conditions.append("owner_kind = 'unassigned'")
 
         sources: dict[int, list[StoredSource]] = {}
         for item_id, path, line_no, raw_line, checked in self._conn.execute(
@@ -289,9 +301,14 @@ class Store:
                 FROM items WHERE {" AND ".join(conditions)}
                 ORDER BY CASE WHEN {overdue} THEN 0 WHEN due_date IS NOT NULL THEN 1 ELSE 2 END, due_date, id
                 """,
-                {"today": today.isoformat(), "due_before": due_before},
+                {"today": today.isoformat(), "due_before": due_before, "owner": owner},
             )
         ]  # fmt: skip
+
+    def attendees(self) -> list[str]:
+        """Every Attendee full name across ingested notes, each once, in first-seen order."""
+        rows = self._conn.execute("SELECT attendees FROM notes ORDER BY meeting_date, path").fetchall()
+        return list(dict.fromkeys(name for (names,) in rows for name in json.loads(names)))
 
     def _derive_item_fields(self, item_id: int) -> None:
         """Set the item's task, written owner, Due Phrase and Due Date from its Sources (FR-9).
