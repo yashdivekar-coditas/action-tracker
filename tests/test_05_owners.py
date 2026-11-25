@@ -202,7 +202,8 @@ def test_unclear_owners_are_warned_on_stderr_fr12_nfr6(harness: Harness) -> None
     assert "Unassigned: sync.md:7: write the changelog" in err
 
 
-def test_list_owner_column_shows_resolution_fr13(harness: Harness) -> None:
+def test_list_owner_column_shows_resolution_fr13(harness: Harness, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COLUMNS", "200")  # wide enough that the table truncates nothing
     harness.ingest_note(
         REPORT_NOTE + "- [ ] Anita & Rahul to agree on the API\n", attendees=PRIYAS_AND_RAHULS
     )

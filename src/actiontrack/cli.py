@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -225,6 +226,7 @@ def _load_config(options: GlobalOptions) -> config.Config | None:
 # --- output -----------------------------------------------------------------------
 
 NO_VALUE = "—"
+MIN_FLEXIBLE_WIDTH = 10
 
 
 def _item_status(item: store.StoredItem) -> str:
@@ -252,6 +254,8 @@ def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
                 "line": source.line_no,
                 "raw_line": source.raw_line,
                 "checked": source.checked,
+                "title": source.title,
+                "meeting_date": source.meeting_date,
             }
             for source in item.sources
         ],
@@ -279,12 +283,15 @@ def _status_label(item: store.StoredItem) -> str:
     return _item_status(item)
 
 
+def _fit(text: str, width: int) -> str:
+    return text if len(text) <= width else text[: width - 1] + "…"
+
+
 def _print_items_table(stored: list[store.StoredItem]) -> None:
     if not stored:
         print("No matching items.")
         return
-    # shortcut: basic aligned columns, no truncation; spec 07 adds terminal-width rendering.
-    header = ("ID", "OWNER", "TASK", "DUE", "STATUS")
+    header = ("ID", "OWNER", "TASK", "DUE", "STATUS", "MEETING")
     rows = [
         (
             str(item.id),
@@ -292,13 +299,21 @@ def _print_items_table(stored: list[store.StoredItem]) -> None:
             _printable(item.task),
             _printable(item.due_date or item.due_phrase or NO_VALUE),
             _status_label(item),
+            # Date first, so a truncated title never hides it.
+            _printable(f"{item.sources[-1].meeting_date} {item.sources[-1].title}") if item.sources else NO_VALUE,
         )
         for item in stored
     ]
     widths = [max(len(row[col]) for row in (header, *rows)) for col in range(len(header))]
+    available = shutil.get_terminal_size(fallback=(100, 24)).columns - 2 * (len(header) - 1)
+    flexible = (1, 2, 5)  # Owner, task and meeting are the columns that can be long
+    while sum(widths) > available:
+        widest = max(flexible, key=lambda col: widths[col])
+        if widths[widest] <= MIN_FLEXIBLE_WIDTH:
+            break  # nothing left to shrink; the table overflows rather than lose more text
+        widths[widest] -= 1
     for row in (header, *rows):
-        print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)).rstrip())
-
+        print("  ".join(_fit(cell, width).ljust(width) for cell, width in zip(row, widths)).rstrip())
 
 
 def _print_ingest_report(report: ingest.IngestReport) -> None:
