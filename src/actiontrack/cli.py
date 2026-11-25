@@ -20,7 +20,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from actiontrack import config, followup, ingest, owners, store
+from actiontrack import config, followup, gmail, ingest, owners, store
 
 PROG = "actiontrack"
 
@@ -247,18 +247,16 @@ def _resolve_person(written: str, attendees: list[str], roster: tuple[config.Per
 
 
 def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
-    """Compose the emails (FR-15). Only `--dry-run` exists so far; creating drafts is added with FR-17."""
+    """Compose the emails (FR-15), then print them (`--dry-run`) or save them as Gmail drafts (FR-17)."""
     if args.all == (args.owner is not None):
         raise UsageError("give one <owner> or --all, not both or neither")
     loaded = _load_config(options, required=True)
     assert loaded is not None  # required=True raises instead of returning None
     if not loaded.sender:
         raise UsageError(f"{loaded.path}: sender is required by followup")
-    if not args.dry_run:
-        raise UsageError("creating Gmail drafts is not yet supported; use --dry-run")
 
     roster = {person.name: person for person in loaded.people}
-    emails: list[followup.Email] = []
+    emails: dict[str, followup.Email] = {}  # by Person
     skipped: list[str] = []
     try:
         # A read must not leave a new, empty database behind, so with none there are simply no items.
@@ -276,11 +274,17 @@ def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
                 elif not items:
                     skipped.append(f"{name}: no Open items")
                 else:
-                    emails.append(followup.compose(person, items, loaded.sender))
+                    emails[name] = followup.compose(person, items, loaded.sender)
     except store.StoreError as exc:
         _error(str(exc))
         return EXIT_FAILED
 
+    if args.dry_run:
+        return _print_dry_run(list(emails.values()), skipped)
+    return _create_drafts(loaded, emails, skipped)
+
+
+def _print_dry_run(emails: list[followup.Email], skipped: list[str]) -> int:
     for position, email in enumerate(emails):
         if position:
             print("---")
@@ -294,6 +298,27 @@ def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
         print(f"Skipped {_printable(reason)}")
     print(f"Dry run: {_plural(len(emails), 'email')} composed, {len(skipped)} skipped. Nothing was created.")
     return EXIT_OK
+
+
+def _create_drafts(loaded: config.Config, emails: dict[str, followup.Email], skipped: list[str]) -> int:
+    """Save each email as a Gmail draft and summarise: created, skipped, failed (FR-17); exit 1 if any failed."""
+    try:
+        outcomes = gmail.create_drafts(loaded.gmail_command, loaded.gmail_draft_tool, list(emails.values())) if emails else []
+    except gmail.GmailError as exc:
+        _error(f"cannot create Gmail drafts: {_printable(str(exc))}")
+        return EXIT_FAILED
+
+    failed = 0
+    for (name, email), outcome in zip(emails.items(), outcomes, strict=True):
+        if outcome.error is None:
+            print(f"Created draft for {_printable(name)} ({_printable(email.to)}): {_printable(outcome.draft_id or '')}")
+        else:
+            failed += 1
+            _error(f"draft for {_printable(name)} failed: {_printable(outcome.error)}")
+    for reason in skipped:
+        print(f"Skipped {_printable(reason)}")
+    print(f"Drafts: {len(emails) - failed} created, {len(skipped)} skipped, {failed} failed. Nothing was sent.")
+    return EXIT_FAILED if failed else EXIT_OK
 
 
 def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:
