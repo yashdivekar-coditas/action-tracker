@@ -186,7 +186,7 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 - Open items are selected with the same query as `list --status open --owner <Person>`, so the two never disagree.
 - `--all` visits Persons in alphabetical order of full name, so output is stable.
 - A config with no `sender` exits `2`.
-- Without `--dry-run`, each email is saved as a Gmail draft (FR-17) and nothing is sent. Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, warn and still create it. Record the time of every draft created.
+- Without `--dry-run`, each email is saved as a Gmail draft (FR-17) and nothing is sent. Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, print `warning: a draft for <Person> was already created at <ISO UTC time>` on stderr (before any draft is created) and still create it. Every draft that was created is recorded with its time (real UTC wall time, not `--today`); failed drafts and `--dry-run` record nothing.
 - Summary (stdout), after one `Created draft for <Person> (<email>): <draft id>` line per draft: the `Skipped <Person>: <reason>` lines, then `Drafts: N created, M skipped, K failed. Nothing was sent.` Each failure is reported on stderr as `draft for <Person> failed: <why>`.
 - Exit `0` when every attempted draft succeeded (skips are not failures); `1` if any failed (the others are still attempted and reported). A missing config is exit `2`. An MCP server that won't start, or that lacks the configured draft tool, is exit `1` with a clear message on stderr and no draft attempted. With nobody to draft for, the server is not started.
 
