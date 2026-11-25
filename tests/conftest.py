@@ -68,8 +68,8 @@ class Harness:
         """Run `actiontrack ingest <folder> --json` (the temp notes folder by default)."""
         return self.run("ingest", str(folder or self.notes), "--json", db=db)
 
-    def write_roster(self, *people: tuple[str, list[str]]) -> Path:
-        """Write ./actiontrack.toml (found automatically) with a People Roster of (name, aliases)."""
+    def write_roster(self, *people: tuple[str, list[str]], sender: str | None = None) -> Path:
+        """Write ./actiontrack.toml (found automatically) with a People Roster of (name, aliases) and an optional sender."""
         # JSON strings and arrays are valid TOML values, so quoting is always right.
         entries = "".join(
             f"\n[[people]]\nname = {json.dumps(name)}\n"
@@ -78,7 +78,8 @@ class Harness:
             for name, aliases in people
         )
         path = self.root / "actiontrack.toml"
-        path.write_text(f'[gmail]\ncommand = ["fake-gmail"]\ndraft_tool = "create_draft"\n{entries}', encoding="utf-8")
+        sender_line = f"sender = {json.dumps(sender)}\n" if sender else ""
+        path.write_text(f'{sender_line}[gmail]\ncommand = ["fake-gmail"]\ndraft_tool = "create_draft"\n{entries}', encoding="utf-8")
         return path
 
     def items(self) -> list[dict[str, Any]]:
