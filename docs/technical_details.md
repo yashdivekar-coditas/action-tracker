@@ -79,7 +79,7 @@ Action-Tracker/
 | `ingest.py` | Run the folder: for each file, parse → extract → resolve → upsert, collecting the report. One transaction per run | FR-1, FR-9–12, NFR-2 |
 | `store.py` | Schema, migrations (`PRAGMA user_version`), upserts, merges, queries for list/done/followup, draft history | FR-9–11, FR-13–15 |
 | `followup.py` | Pick a Person's Open items, order them, render subject and plain-text body | FR-15–16 |
-| `gmail.py` | Start the configured stdio MCP server, `initialize`, confirm the draft tool exists, `call_tool(draft_tool, …)` once per draft | FR-17, NFR-1 |
+| `gmail.py` | Start the configured stdio MCP server, `initialize`, confirm the draft tool exists, `call_tool(draft_tool, …)` once per draft; map results to a draft id or a failure. The only module importing `mcp` (lazily) | FR-17, NFR-1, NFR-7 |
 
 ---
 
@@ -213,7 +213,7 @@ sequenceDiagram
     end
 ```
 
-`gmail.py` uses `mcp.ClientSession` over `mcp.client.stdio.stdio_client(StdioServerParameters(command=argv[0], args=argv[1:]))`. It is the only async code, wrapped in `asyncio.run` so the rest of the CLI stays synchronous.
+`gmail.py` uses `mcp.Client(StdioServerParameters(command=argv[0], args=argv[1:], env=dict(os.environ)), read_timeout_seconds=60)`, imported lazily inside its functions. It is the only async code, wrapped in `asyncio.run` behind the synchronous `create_drafts(command, draft_tool, emails) -> list[Outcome]`, so the rest of the CLI stays synchronous. A server that cannot start or lacks the tool raises `GmailError` (exit 1); a failing draft is an `Outcome(error=...)` and the others continue. `to` is sent as a list when the draft tool's `inputSchema` says `array`.
 
 ### 4.3 Error and exit-code paths
 
@@ -239,7 +239,7 @@ There are exactly two test seams (NFR-5):
 
 Tests are grouped by spec, one file per `docs/specs/NN-*.md`, and each test names the FR/NFR it proves. Rule tables (FR-7, FR-8) are parametrised tests that write a tiny note per row. `test_sample_notes.py` ingests `notes/` with `--today 2026-10-15` and asserts every row of FRD §6.
 
-`fake_gmail_server.py` is a tiny `mcp.server.fastmcp.FastMCP` stdio server. It exposes `create_draft` and a decoy `send_message`, and logs every call to a temp file the test reads.
+`fake_gmail_server.py` is a tiny `mcp.server.mcpserver.MCPServer` stdio server. It exposes `create_draft` and a decoy `send_message`, and logs every call to a temp file the test reads (the `fake_gmail` fixture in `conftest.py`, whose finaliser fails any test that logged `send_message`). Env switches make it fail for one recipient, omit `create_draft`, or mimic the production server (list `to`, text-only results, `Error:` text failures).
 
 Run everything with `pytest`. No network or real credentials are needed.
 

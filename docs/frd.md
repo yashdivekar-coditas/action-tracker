@@ -186,8 +186,9 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 - Open items are selected with the same query as `list --status open --owner <Person>`, so the two never disagree.
 - `--all` visits Persons in alphabetical order of full name, so output is stable.
 - A config with no `sender` exits `2`.
-- Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, warn and still create it. Record the time of every draft created.
-- Exit `0` when every attempted draft succeeded; `1` if any failed (the others are still attempted and reported). A missing config, or an MCP server that won't start, is an error with a clear message.
+- Without `--dry-run`, each email is saved as a Gmail draft (FR-17) and nothing is sent. Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, warn and still create it. Record the time of every draft created.
+- Summary (stdout), after one `Created draft for <Person> (<email>): <draft id>` line per draft: the `Skipped <Person>: <reason>` lines, then `Drafts: N created, M skipped, K failed. Nothing was sent.` Each failure is reported on stderr as `draft for <Person> failed: <why>`.
+- Exit `0` when every attempted draft succeeded (skips are not failures); `1` if any failed (the others are still attempted and reported). A missing config is exit `2`. An MCP server that won't start, or that lacks the configured draft tool, is exit `1` with a clear message on stderr and no draft attempted. With nobody to draft for, the server is not started.
 
 ### FR-16 Email content
 Plain text (illustrative only, with today = 2026-10-23):
@@ -221,7 +222,10 @@ Thanks,
 - Every Source meeting is listed, joined in date order.
 
 ### FR-17 Gmail draft creation
-- actiontrack is an MCP client (ADR-0001). It starts the stdio Gmail MCP server given in config and calls **only** the configured create-draft tool, once per draft, with recipient, subject and body.
+- actiontrack is an MCP client (ADR-0001). It starts the stdio Gmail MCP server given in config (as an argument list, never a shell), initialises it, lists its tools, and calls **only** the configured create-draft tool, once per draft, with recipient, subject and body (`to`, `subject`, `body`).
+- `to` is the plain address, or a one-item list when the tool's input schema declares `to` as an array (the production server does).
+- The draft id is taken from the result's structured content (`id`) if present, else its text, and shown as returned. A result is a failure when the server flags an error or the text starts with `Error` (the production server reports some failures that way); the tool raising or timing out is a failure too.
+- Every wait on the server (start-up, each call) is bounded by a 60 second timeout, so a hung server fails the run (exit `1`) instead of hanging it.
 - It never calls any tool that sends, replies or forwards. See NFR-1.
 
 ---

@@ -157,13 +157,6 @@ def test_owner_or_all_is_required_but_not_both_fr15(harness: Harness) -> None:
     assert harness.run("followup", "Priya", "--all", "--dry-run").code == 2
 
 
-def test_without_dry_run_it_refuses_for_now_fr15(harness: Harness) -> None:
-    result = seeded(harness, PRIYA).run("followup", "Priya")
-
-    assert result.code == 2
-    assert "not yet supported" in result.err
-
-
 def test_dry_run_leaves_no_database_behind_fr15(harness: Harness) -> None:
     harness.write_roster(PRIYA, sender="Yash")
     result = harness.run("followup", "--all", "--dry-run")

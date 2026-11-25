@@ -7,8 +7,8 @@ name = "actiontrack"
 version = "0.1.0"
 description = "Ingest markdown meeting notes, track their action items, and create Gmail drafts for follow-ups."
 requires-python = ">=3.11"
-# NFR-7: stdlib only for now; `mcp` arrives with the Gmail adapter (spec 09).
-dependencies = []
+# NFR-7: stdlib plus the official MCP SDK (imported only by gmail.py).
+dependencies = ["mcp>=2.3"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
