@@ -6,6 +6,7 @@ notes and observed through `actiontrack list --json`.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import pytest
@@ -332,3 +333,15 @@ def test_an_item_never_has_an_empty_task_fr6(harness: Harness) -> None:
     items = harness.ingest_note("- [ ] @karan:\n- [ ] Karan to by Friday\n")
 
     assert [split(i) for i in items] == [(None, "@karan:", None), ("Karan", "by Friday", None)]
+
+
+def test_pathological_lines_are_split_in_linear_time_nfr2(harness: Harness) -> None:
+    started = time.perf_counter()
+    items = harness.ingest_note(
+        "- [ ] Karan to x" + " " * 20_000 + "y\n"
+        "- [ ] Karan to x " + "by " * 20_000 + "Friday\n"
+        "- [ ] Karan to x, due" + " " * 20_000 + "z\n"
+    )
+
+    assert time.perf_counter() - started < 2  # quadratic backtracking took ~48 s
+    assert len(items) == 3

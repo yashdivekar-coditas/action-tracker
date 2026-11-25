@@ -6,6 +6,7 @@ Pure: works on the note's text only (NFR-9). FR-4 (shapes), FR-5 (Decoys), FR-6 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -161,22 +162,24 @@ _OWNER_TOKEN = re.compile(r"[A-Z][\w'’.-]*|[A-Z]\.|&|,|and|\?")
 _OWNER_TOKENS = re.compile(r"[^\s,&]+|[,&]")
 
 # Separators a Due Phrase may be attached with: `, by`, `— by`, ` - by`, or plain space.
-_SEP = r"(?:\s*[,;—–]\s*|\s+-\s+|\s+)"
+# All three run on whitespace-collapsed text and avoid lazy-match-to-end patterns, so a
+# hostile line is split in linear time (NFR-2).
 # A `due <phrase>` clause; needs a separator or `results` first, so `the overdue invoices` stays task.
 _DUE_CLAUSE = re.compile(
-    r"(?:\s*[,;—–]\s*|\s+-\s+|\s+(?=results\s))(?:results\s+)?due\s+(?P<phrase>.+?)\s*$",
-    re.IGNORECASE,
+    r"(?:\s?[,;—–]\s?| - | (?=results ))(?:results )?due (?P<phrase>\S.*)$", re.IGNORECASE
 )
-# A trailing `by <phrase>`; the phrase may not contain another ` by `, so the last one wins.
-_BY_CLAUSE = re.compile(_SEP + r"by\s+(?P<phrase>(?:(?!\sby\s).)+?)\s*$", re.IGNORECASE)
+# Each `by` that starts a Due Phrase; the lookahead leaves the next separator unconsumed,
+# so in `by by Friday` the last `by` is still found. The last match wins.
+_BY_KEYWORD = re.compile(r"(?:\s?[,;—–]\s?| - | )by(?= \S)", re.IGNORECASE)
 # A bare trailing deadline word, e.g. `circulate the summary tomorrow` (FRD §6).
-_BARE_DEADLINE = re.compile(_SEP + r"(?P<phrase>(?:EOD\s+)?tomorrow|today|EOD)\s*$", re.IGNORECASE)
+_BARE_DEADLINE = re.compile(r"(?:\s?[,;—–]\s?| - | )(?P<phrase>(?:EOD )?tomorrow|today|EOD)$", re.IGNORECASE)
 _TASK_TRIM = " \t,;—–-"
 _PHRASE_TRIM = _TASK_TRIM + ".!?"  # `by Friday.` -> `Friday`
 
 
 def split(text: str) -> tuple[str | None, str, str | None]:
     """Split item text into (owner part, task, Due Phrase); owner and Due Phrase may be None."""
+    text = " ".join(text.split())
     owner, rest = _split_owner(text)
     task, due = _split_due(rest)
     if not task:  # e.g. `Karan to by Friday`: keep everything written as the task
@@ -199,7 +202,22 @@ def _is_owner_part(text: str) -> bool:
 
 
 def _split_due(text: str) -> tuple[str, str | None]:
-    for clause in (_DUE_CLAUSE, _BY_CLAUSE, _BARE_DEADLINE):
-        if match := clause.search(text):
-            return text[: match.start()].strip(_TASK_TRIM), match["phrase"].rstrip(_PHRASE_TRIM)
-    return text.strip(_TASK_TRIM), None
+    text = " ".join(text.split())
+    start: int | None = None
+    phrase = ""
+    if match := _DUE_CLAUSE.search(text):
+        start, phrase = match.start(), match["phrase"]
+    elif by := _last(_BY_KEYWORD.finditer(text)):
+        start, phrase = by.start(), text[by.end():]
+    elif match := _BARE_DEADLINE.search(text):
+        start, phrase = match.start(), match["phrase"]
+    if start is None:
+        return text.strip(_TASK_TRIM), None
+    return text[:start].strip(_TASK_TRIM), phrase.strip(_PHRASE_TRIM) or None
+
+
+def _last(matches: Iterator[re.Match[str]]) -> re.Match[str] | None:
+    last = None
+    for last in matches:
+        pass
+    return last
