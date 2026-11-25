@@ -229,8 +229,8 @@ Looked up as `--config`, then `./actiontrack.toml`, then `~/.config/actiontrack/
 sender = "Your Name"
 
 [gmail]
-command = ["npx", "-y", "<gmail-mcp-server>"]   # stdio MCP server launch command
-draft_tool = "create_draft"                     # the server's create-draft tool name
+command = ["npx", "-y", "@artymclabin/gmail-mcp"]   # stdio MCP server launch command
+draft_tool = "draft_email"                      # the server's create-draft tool name
 
 [[people]]
 name = "Priya Nair"

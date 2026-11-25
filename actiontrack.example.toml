@@ -7,9 +7,10 @@ sender = "Your Name"
 
 [gmail]
 # Launch command of a stdio Gmail MCP server, as an argument list (never run through a shell).
-command = ["npx", "-y", "<gmail-mcp-server>"]
+# Sign-in belongs to the server: once, run `npx @artymclabin/gmail-mcp auth --scopes=gmail.compose`.
+command = ["npx", "-y", "@artymclabin/gmail-mcp"]
 # The server's create-draft tool. Names containing send, reply or forward are refused.
-draft_tool = "create_draft"
+draft_tool = "draft_email"
 
 # The People Roster: one [[people]] table per Person. Aliases are optional.
 # Full names and aliases must be unique (ignoring case) across the roster.

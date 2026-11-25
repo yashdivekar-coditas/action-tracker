@@ -256,7 +256,7 @@ pytest
 
 **Configure follow-ups** (only `followup` needs this):
 
-1. Choose a stdio Gmail MCP server and complete *its* Google OAuth setup (see open item in §8).
+1. Use the stdio Gmail MCP server `@artymclabin/gmail-mcp` (tool `draft_email`; see §6.1) and complete *its* Google OAuth setup.
 2. Copy `actiontrack.example.toml` to `actiontrack.toml` and fill in `sender`, `[gmail].command`, `[gmail].draft_tool`, and one `[[people]]` entry per Person with their email.
 
 **Use:**
@@ -270,6 +270,17 @@ actiontrack done 12
 actiontrack followup "Priya Nair" --dry-run    # preview
 actiontrack followup --all                     # creates Gmail drafts, sends nothing
 ```
+
+### 6.1 Production Gmail MCP server
+
+actiontrack is tested against the stdio server **`@artymclabin/gmail-mcp`** ([source](https://github.com/ArtyMcLabin/Gmail-MCP-Server), MIT, npm 1.2.4 released 2026-11-01). It is the maintained fork of the archived `GongRzhe/Gmail-MCP-Server`.
+
+- **Launch:** `command = ["npx", "-y", "@artymclabin/gmail-mcp"]`, `draft_tool = "draft_email"`.
+- **Auth (NFR-4):** owned by the server. Create a Google Cloud OAuth client (Desktop), save its JSON as `~/.gmail-mcp/gcp-oauth.keys.json`, then run `npx @artymclabin/gmail-mcp auth --scopes=gmail.compose` once. Tokens go to `~/.gmail-mcp/credentials.json`; actiontrack never sees them.
+- **Arguments:** `draft_email` takes `to`, `subject` and `body` (plain text). **`to` is a list of strings**, not a string, so the client must send `to: ["person@example.com"]`.
+- **Result:** plain text, no `structuredContent`: `Email draft created successfully with ID: <id>`. The draft id is the text after `ID: `.
+- **Errors:** a failed call comes back as ordinary text starting `Error: ` with `isError` unset, so a draft counts as created only when the success text carries an id.
+- **Note:** this server also exposes `send_email`, `send_draft` and `reply_all`; the NFR-1 allowlist in `gmail.py` is what keeps actiontrack from calling them.
 
 ---
 
@@ -294,7 +305,7 @@ The exact item counts and ids are determined by the implementation; the end-to-e
 
 | Risk | Impact | Mitigation / next step |
 |---|---|---|
-| Gmail MCP server not yet chosen; its create-draft argument names may differ from `to`/`subject`/`body` | `followup` can't run until resolved | Pick and test one server; add an argument mapping to `[gmail]` only if needed (FRD §8) |
+| The chosen Gmail MCP server (§6.1) takes `to` as a list and reports failures as plain text without `isError` | A string `to` is rejected; a failed draft looks like a normal result | Send `to` as a one-item list; accept a draft only when the result text carries an id |
 | Exact-after-normalising dedupe misses heavier rewording | The same commitment shows as two items | Accepted trade-off against false merges; spot-check `list` after ingest |
 | Owner-part heuristic (capitalised words before ` to `) | A task starting with a capitalised phrase could be misread as an owner, which then shows as Unknown | Unknown Owners are reported at ingest for a human to check |
 | Editing a note line after ingest creates a new occurrence; deleting a note doesn't remove its items | Stale items remain open | Mark them done with `done <id>`; a cleanup command is out of scope |
