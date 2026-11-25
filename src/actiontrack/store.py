@@ -193,17 +193,12 @@ class Store:
         duplicate = merged = False
         if row is not None:
             item_id = row[0]
-            other = self._conn.execute(
-                "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL AND id != ?", (key, item_id)
-            ).fetchone()
-            if other:
-                item_id, merged = min(item_id, other[0]), True
-                self._merge_items(loser=max(row[0], other[0]), survivor=item_id)
+            if (other := self._live_with_key(key, excluding=item_id)) is not None:
+                item_id, merged = min(item_id, other), True
+                self._merge_items(loser=max(row[0], other), survivor=item_id)
             self._conn.execute("UPDATE items SET dedupe_key = ? WHERE id = ?", (key, item_id))
-        elif live := self._conn.execute(
-            "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL", (key,)
-        ).fetchone():
-            item_id, duplicate = live[0], True
+        elif (live := self._live_with_key(key)) is not None:
+            item_id, duplicate = live, True
         else:
             item_id = self._conn.execute(
                 "INSERT INTO items (task, dedupe_key) VALUES (?, ?)", (occurrence.task, key)
@@ -236,6 +231,13 @@ class Store:
             item_id=item_id, new_item=row is None and not duplicate, duplicate=duplicate, merged=merged,
             newly_done=newly_done,
         )  # fmt: skip
+
+    def _live_with_key(self, key: str, *, excluding: int = 0) -> int | None:
+        """The id of the live (not merged) item with this dedupe key, other than `excluding`."""
+        row = self._conn.execute(
+            "SELECT id FROM items WHERE dedupe_key = ? AND merged_into IS NULL AND id != ?", (key, excluding)
+        ).fetchone()
+        return row[0] if row else None
 
     def live_id(self, item_id: int) -> int:
         """`item_id`, or the item it was merged into (FR-11); merges repoint chains, so one hop is enough."""
@@ -282,8 +284,10 @@ class Store:
             """,
             (item_id,),
         ).fetchall()
-        task, written_owner, *_ = sources[0]
-        due_phrase, due_date = next(((s[2], s[3]) for s in sources if s[2] is not None), (None, None))
+        task, written_owner, _, _ = sources[0]
+        due_phrase, due_date = next(
+            ((phrase, due) for _, _, phrase, due in sources if phrase is not None), (None, None)
+        )
         self._conn.execute(
             "UPDATE items SET task = ?, written_owner = ?, due_phrase = ?, due_date = ? WHERE id = ?",
             (task, written_owner, due_phrase, due_date, item_id),
