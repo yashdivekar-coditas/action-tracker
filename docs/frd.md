@@ -181,7 +181,11 @@ Exit `0` whenever the run completes, Malformed Notes included. Exit `2` for usag
 - `--all`: one draft for every Person with at least one Open item.
 - Content: that Person's Open items, Overdue first, including shared and Team Items. Ambiguous, Unknown and Unassigned items are never included.
 - Skipped and reported (no draft, not an error): an Owner with no Open items, or one not in the roster or without an email.
-- `--dry-run`: print each email and create nothing.
+- `--dry-run`: print each email and create nothing; it needs no database and never creates one. Each email is `To:`, `Subject:`, a blank line and the body; emails are separated by a `---` line. Skips are printed as `Skipped <Person>: <reason>` (`no Open items` or `not in the People Roster`), then a closing `Dry run: N emails composed, M skipped. Nothing was created.` line.
+- Give exactly one of `<owner>` or `--all`; neither or both exits `2`. `unassigned` is not an `<owner>`, so it matches nobody and exits `2`.
+- Open items are selected with the same query as `list --status open --owner <Person>`, so the two never disagree.
+- `--all` visits Persons in alphabetical order of full name, so output is stable.
+- A config with no `sender` exits `2`.
 - Each run creates a new draft. If a draft for that Owner was created in the last 24 hours, warn and still create it. Record the time of every draft created.
 - Exit `0` when every attempted draft succeeded; `1` if any failed (the others are still attempted and reported). A missing config, or an MCP server that won't start, is an error with a clear message.
 
@@ -210,8 +214,10 @@ Thanks,
 <sender from config>
 ```
 
-- Due shows the Due Date, else the raw Due Phrase, else `no due date`.
-- Overdue items show days late.
+- Due shows the Due Date, else the raw Due Phrase, else `no due date`; the first two read `due <value>`.
+- Overdue items show days late: `(5 days overdue)`, or `(1 day overdue)`.
+- The subject counts every Open item (Overdue included) and the Overdue ones; the OVERDUE and OPEN sections are each left out when empty.
+- Items list the task only (the email is to the Owner, so no Owner column). Note text is shown with control characters escaped (NFR-4).
 - Every Source meeting is listed, joined in date order.
 
 ### FR-17 Gmail draft creation

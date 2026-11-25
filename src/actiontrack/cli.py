@@ -14,12 +14,13 @@ import re
 import shutil
 import sys
 from collections.abc import Callable, Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
 
-from actiontrack import config, ingest, owners, store
+from actiontrack import config, followup, ingest, owners, store
 
 PROG = "actiontrack"
 
@@ -108,6 +109,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     list_.add_argument("--json", action="store_true", help="print the items as a JSON array")
     list_.set_defaults(handler=_cmd_list)
+
+    followup_ = commands.add_parser(
+        "followup",
+        parents=[_global_options_parser()],
+        help="compose follow-up emails from Open items",
+        description="Compose one plain-text email per Person listing their Open items, Overdue first.",
+    )
+    followup_.add_argument("owner", nargs="?", help="the Person: full name, alias or unique first name")
+    followup_.add_argument("--all", action="store_true", help="one email for every Person with Open items")
+    followup_.add_argument("--dry-run", action="store_true", help="print the emails and create nothing")
+    followup_.set_defaults(handler=_cmd_followup)
 
     done = commands.add_parser(
         "done",
@@ -221,14 +233,67 @@ def _resolve_owner_filter(written: str | None, attendees: list[str], options: Gl
     if written is None or _is_unassigned(written):
         return None
     loaded = _load_config(options)
-    roster = loaded.people if loaded else ()
+    return _resolve_person(written, attendees, loaded.people if loaded else (), "--owner")
+
+
+def _resolve_person(written: str, attendees: list[str], roster: tuple[config.Person, ...], label: str) -> str:
     matches = owners.find_person(written, attendees, roster)
     if len(matches) == 1:
         return matches[0]
     if matches:
-        raise UsageError(f"--owner {written!r} is ambiguous: {', '.join(matches)}")
+        raise UsageError(f"{label} {written!r} is ambiguous: {', '.join(matches)}")
     known = ", ".join(dict.fromkeys([*attendees, *(person.name for person in roster)]))
-    raise UsageError(f"--owner {written!r} matches nobody; known people: {known or 'none'}")
+    raise UsageError(f"{label} {written!r} matches nobody; known people: {known or 'none'}")
+
+
+def _cmd_followup(args: argparse.Namespace, options: GlobalOptions) -> int:
+    """Compose the emails (FR-15). Only `--dry-run` exists so far; creating drafts is added with FR-17."""
+    if args.all == (args.owner is not None):
+        raise UsageError("give one <owner> or --all, not both or neither")
+    loaded = _load_config(options, required=True)
+    assert loaded is not None  # required=True raises instead of returning None
+    if not loaded.sender:
+        raise UsageError(f"{loaded.path}: sender is required by followup")
+    if not args.dry_run:
+        raise UsageError("creating Gmail drafts is not yet supported; use --dry-run")
+
+    roster = {person.name: person for person in loaded.people}
+    emails: list[followup.Email] = []
+    skipped: list[str] = []
+    try:
+        # A read must not leave a new, empty database behind, so with none there are simply no items.
+        with store.transaction(options.db) if options.db.exists() else nullcontext() as db:
+            if args.all:
+                # Ambiguous and Unknown items have no Persons, so only resolved Owners get an email.
+                names = sorted({person for item in (db.list_items(options.today, status="open") if db else []) for person in item.persons})
+            else:
+                names = [_resolve_person(args.owner, db.attendees() if db else [], loaded.people, "<owner>")]
+            for name in names:
+                person = roster.get(name)
+                items = db.list_items(options.today, status="open", owner=name) if db else []
+                if person is None:
+                    skipped.append(f"{name}: not in the People Roster")
+                elif not items:
+                    skipped.append(f"{name}: no Open items")
+                else:
+                    emails.append(followup.compose(person, items, loaded.sender))
+    except store.StoreError as exc:
+        _error(str(exc))
+        return EXIT_FAILED
+
+    for position, email in enumerate(emails):
+        if position:
+            print("---")
+        print(_printable(f"To: {email.to}"))
+        print(_printable(f"Subject: {email.subject}"))
+        print()
+        print(*(_printable(line) for line in email.body.splitlines()), sep="\n")
+    if emails:
+        print()
+    for reason in skipped:
+        print(f"Skipped {_printable(reason)}")
+    print(f"Dry run: {_plural(len(emails), 'email')} composed, {len(skipped)} skipped. Nothing was created.")
+    return EXIT_OK
 
 
 def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:
@@ -254,9 +319,9 @@ def _cmd_done(args: argparse.Namespace, options: GlobalOptions) -> int:
     return EXIT_OK
 
 
-def _load_config(options: GlobalOptions) -> config.Config | None:
+def _load_config(options: GlobalOptions, *, required: bool = False) -> config.Config | None:
     """Load and validate the config, printing its warnings; a `ConfigError` exits 2 (FR-18)."""
-    loaded = config.load(options.config)
+    loaded = config.load(options.config, required=required)
     for warning in loaded.warnings if loaded else ():
         print(f"{PROG}: warning: {_printable(warning)}", file=sys.stderr)
     return loaded
