@@ -82,6 +82,15 @@ def _build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--json", action="store_true", help="print the report as one JSON object")
     ingest.set_defaults(handler=_cmd_ingest)
 
+    list_ = commands.add_parser(
+        "list",
+        parents=[_global_options_parser()],
+        help="show stored Action Items",
+        description="Show every stored Action Item in id order.",
+    )
+    list_.add_argument("--json", action="store_true", help="print the items as a JSON array")
+    list_.set_defaults(handler=_cmd_list)
+
     return parser
 
 
@@ -141,7 +150,69 @@ def _cmd_ingest(args: argparse.Namespace, options: GlobalOptions) -> int:
     return EXIT_OK
 
 
+def _cmd_list(args: argparse.Namespace, options: GlobalOptions) -> int:
+    try:
+        with store.transaction(options.db) as db:
+            stored = db.list_items()
+    except store.StoreError as exc:
+        _error(str(exc))
+        return EXIT_FAILED
+
+    if args.json:
+        print(json.dumps([_item_to_dict(item) for item in stored], ensure_ascii=False, indent=2))
+    else:
+        _print_items_table(stored)
+    return EXIT_OK
+
+
 # --- output -----------------------------------------------------------------------
+
+NO_VALUE = "—"
+
+
+def _item_status(item: store.StoredItem) -> str:
+    return "done" if item.done else "open"
+
+
+def _item_to_dict(item: store.StoredItem) -> dict[str, object]:
+    """One item in `list --json`; keys may be added, never renamed (NFR-6)."""
+    return {
+        "id": item.id,
+        "written_owner": item.written_owner,
+        "task": item.task,
+        "due_phrase": item.due_phrase,
+        "due_date": item.due_date,
+        "status": _item_status(item),
+        "sources": [
+            {
+                "file": Path(source.path).name,
+                "path": source.path,
+                "line": source.line_no,
+                "raw_line": source.raw_line,
+                "checked": source.checked,
+            }
+            for source in item.sources
+        ],
+    }
+
+
+def _print_items_table(stored: list[store.StoredItem]) -> None:
+    # shortcut: basic aligned columns, no truncation; spec 07 adds terminal-width rendering.
+    header = ("ID", "OWNER", "TASK", "DUE", "STATUS")
+    rows = [
+        (
+            str(item.id),
+            _printable(item.written_owner or NO_VALUE),
+            _printable(item.task),
+            _printable(item.due_date or item.due_phrase or NO_VALUE),
+            _item_status(item),
+        )
+        for item in stored
+    ]
+    widths = [max(len(row[col]) for row in (header, *rows)) for col in range(len(header))]
+    for row in (header, *rows):
+        print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)).rstrip())
+
 
 
 def _print_ingest_report(report: ingest.IngestReport) -> None:

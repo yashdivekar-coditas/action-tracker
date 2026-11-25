@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from actiontrack import notes, store
+from actiontrack import items, notes, store
 
 NOTE_SUFFIX = ".md"
 
@@ -25,6 +25,14 @@ class MalformedNote:
 
     file: str
     reason: str
+
+
+@dataclass(frozen=True)
+class ParsedNote:
+    """A valid Meeting Note and the Action Item occurrences found in it."""
+
+    note: notes.Note
+    occurrences: list[items.Occurrence]
 
 
 @dataclass(frozen=True)
@@ -101,11 +109,16 @@ def run(folder: Path, db_path: Path) -> IngestReport:
                 report.ignored += 1
                 continue
             parsed = _parse(path)
-            if isinstance(parsed, notes.Malformed):
+            if isinstance(parsed, notes.Malformed):  # FR-3: skipped whole, no items stored
                 report.malformed_notes.append(MalformedNote(path.name, parsed.reason))
                 continue
-            db.upsert_note(path.resolve(), parsed)
-            report.ingested_notes.append(IngestedNote(path.name, parsed))
+            note_path = path.resolve()
+            db.upsert_note(note_path, parsed.note)
+            for occurrence in parsed.occurrences:
+                result = db.record_occurrence(note_path, occurrence, parsed.note.meeting_date)
+                report.items_new += result.new_item
+                report.items_done += result.newly_done
+            report.ingested_notes.append(IngestedNote(path.name, parsed.note))
     return report
 
 
@@ -131,8 +144,12 @@ def _same_file(path: Path, other: Path) -> bool:
         return False
 
 
-def _parse(path: Path) -> notes.Note | notes.Malformed:
+def _parse(path: Path) -> ParsedNote | notes.Malformed:
+    """Read, parse and extract one note; any failure becomes a Malformed reason."""
     try:
-        return notes.parse(path.read_bytes(), path.name)
+        note = notes.parse(path.read_bytes(), path.name)
+        if isinstance(note, notes.Malformed):
+            return note
+        return ParsedNote(note, items.extract(note.text))
     except Exception as exc:  # NFR-2: one bad note must never stop the run
         return notes.Malformed(f"unreadable: {exc}")
